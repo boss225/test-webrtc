@@ -2,7 +2,6 @@ import { Server } from "socket.io";
 
 const SocketHandler = (req, res) => {
   if (res.socket.server.io) {
-    console.log("Socket is already attached");
     return res.end();
   }
 
@@ -10,8 +9,6 @@ const SocketHandler = (req, res) => {
   res.socket.server.io = io;
 
   io.on("connection", (socket) => {
-    console.log(`User Connected :${socket.id}`);
-
     // Triggered when a peer hits the join room button.
     socket.on("join", (roomName) => {
       const { rooms } = io.sockets.adapter;
@@ -29,7 +26,6 @@ const SocketHandler = (req, res) => {
         // when there are already two people inside the room.
         socket.emit("full");
       }
-      console.log(rooms);
     });
 
     // Triggered when the person who joined the room is ready to communicate.
@@ -39,7 +35,6 @@ const SocketHandler = (req, res) => {
 
     // Triggered when server gets an icecandidate from a peer in the room.
     socket.on("ice-candidate", (candidate, roomName) => {
-      console.log(candidate);
       socket.broadcast.to(roomName).emit("ice-candidate", candidate); // Sends Candidate to the other peer in the room.
     });
 
