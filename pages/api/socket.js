@@ -6,7 +6,7 @@ const SocketHandler = (req, res) => {
   }
 
   const io = new Server(res.socket.server, {
-    path: "/api/socket_io",
+    path: "/api/socket",
     addTrailingSlash: false,
   });
   res.socket.server.io = io;
