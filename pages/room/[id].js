@@ -22,7 +22,9 @@ const Room = () => {
 
   const { id: roomName } = router.query;
   useEffect(() => {
-    socketRef.current = io();
+    socketRef.current = io(undefined, {
+      path: "/api/socket_io",
+    });
     // First we join a room
     socketRef.current.emit("join", roomName);
 
