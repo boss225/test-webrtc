@@ -5,7 +5,10 @@ const SocketHandler = (req, res) => {
     return res.end();
   }
 
-  const io = new Server(res.socket.server);
+  const io = new Server(res.socket.server, {
+    path: "/api/socket_io",
+    addTrailingSlash: false,
+  });
   res.socket.server.io = io;
 
   io.on("connection", (socket) => {
@@ -18,13 +21,16 @@ const SocketHandler = (req, res) => {
       if (room === undefined) {
         socket.join(roomName);
         socket.emit("created");
-      } else if (room.size === 1) {
-        // room.size == 1 when one person is inside the room.
-        socket.join(roomName);
-        socket.emit("joined");
+        //   } else if (room.size === 1) {
+        //     // room.size == 1 when one person is inside the room.
+        //     socket.join(roomName);
+        //     socket.emit("joined");
       } else {
         // when there are already two people inside the room.
-        socket.emit("full");
+        // socket.emit("full");
+
+        socket.join(roomName);
+        socket.emit("joined");
       }
     });
 

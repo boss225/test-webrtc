@@ -262,3 +262,248 @@ const Room = () => {
 };
 
 export default Room;
+
+// import { useRouter } from "next/router";
+// import { useEffect, useRef, useState } from "react";
+// import { io } from "socket.io-client";
+// import useSocket from "../../hooks/useSocket";
+
+// const ICE_SERVERS = {
+//   iceServers: [{ urls: "stun:openrelay.metered.ca:80" }],
+// };
+
+// const Room = () => {
+//   useSocket();
+//   const [micActive, setMicActive] = useState(true);
+//   const [cameraActive, setCameraActive] = useState(true);
+
+//   const router = useRouter();
+//   const userVideoRef = useRef();
+//   const peerVideoRefs = useRef({});
+//   const rtcConnections = useRef({});
+//   const socketRef = useRef();
+//   const userStreamRef = useRef();
+//   const hostRef = useRef(false);
+
+//   const { id: roomName } = router.query;
+
+//   useEffect(() => {
+//     socketRef.current = io();
+
+//     socketRef.current.emit("join", roomName);
+
+//     socketRef.current.on("joined", handleRoomJoined);
+//     socketRef.current.on("created", handleRoomCreated);
+//     socketRef.current.on("ready", initiateCall);
+//     socketRef.current.on("leave", onPeerLeave);
+//     socketRef.current.on("full", () => {
+//       window.location.href = "/";
+//     });
+
+//     socketRef.current.on("offer", handleReceivedOffer);
+//     socketRef.current.on("answer", handleAnswer);
+//     socketRef.current.on("ice-candidate", handleNewIceCandidateMsg);
+
+//     socketRef.current.on("user-joined", handleUserJoined);
+//     socketRef.current.on("user-left", handleUserLeft);
+
+//     return () => socketRef.current.disconnect();
+//   }, [roomName]);
+
+//   const handleRoomJoined = () => {
+//     navigator.mediaDevices
+//       .getUserMedia({
+//         audio: true,
+//         video: { width: 500, height: 500 },
+//       })
+//       .then((stream) => {
+//         userStreamRef.current = stream;
+//         userVideoRef.current.srcObject = stream;
+//         userVideoRef.current.onloadedmetadata = () => {
+//           userVideoRef.current.play();
+//         };
+//         socketRef.current.emit("ready", roomName);
+//       })
+//       .catch((err) => {
+//         console.log("error", err);
+//       });
+//   };
+
+//   const handleRoomCreated = () => {
+//     hostRef.current = true;
+//     navigator.mediaDevices
+//       .getUserMedia({
+//         audio: true,
+//         video: { width: 500, height: 500 },
+//       })
+//       .then((stream) => {
+//         userStreamRef.current = stream;
+//         userVideoRef.current.srcObject = stream;
+//         userVideoRef.current.onloadedmetadata = () => {
+//           userVideoRef.current.play();
+//         };
+//       })
+//       .catch((err) => {
+//         console.log(err);
+//       });
+//   };
+
+//   const initiateCall = () => {
+//     if (hostRef.current) {
+//       socketRef.current.emit("ready", roomName);
+//     }
+//   };
+
+//   const onPeerLeave = () => {
+//     hostRef.current = true;
+//     Object.values(peerVideoRefs.current).forEach((videoRef) => {
+//       if (videoRef.srcObject) {
+//         videoRef.srcObject.getTracks().forEach((track) => track.stop());
+//       }
+//     });
+
+//     Object.values(rtcConnections.current).forEach((connection) => {
+//       connection.ontrack = null;
+//       connection.onicecandidate = null;
+//       connection.close();
+//     });
+
+//     peerVideoRefs.current = {};
+//     rtcConnections.current = {};
+//   };
+
+//   const handleUserJoined = (userId) => {
+//     if (userId === socketRef.current.id) return;
+//     const connection = createPeerConnection(userId);
+//     rtcConnections.current[userId] = connection;
+//     userStreamRef.current.getTracks().forEach((track) => {
+//       connection.addTrack(track, userStreamRef.current);
+//     });
+//   };
+
+//   const handleUserLeft = (userId) => {
+//     if (peerVideoRefs.current[userId]) {
+//       peerVideoRefs.current[userId].srcObject.getTracks().forEach((track) => track.stop());
+//       delete peerVideoRefs.current[userId];
+//     }
+//     if (rtcConnections.current[userId]) {
+//       rtcConnections.current[userId].ontrack = null;
+//       rtcConnections.current[userId].onicecandidate = null;
+//       rtcConnections.current[userId].close();
+//       delete rtcConnections.current[userId];
+//     }
+//   };
+
+//   const createPeerConnection = (userId) => {
+//     const connection = new RTCPeerConnection(ICE_SERVERS);
+
+//     connection.onicecandidate = (event) => handleICECandidateEvent(event, userId);
+//     connection.ontrack = (event) => handleTrackEvent(event, userId);
+
+//     return connection;
+//   };
+
+//   const handleReceivedOffer = (offer, userId) => {
+//     const connection = createPeerConnection(userId);
+//     rtcConnections.current[userId] = connection;
+//     connection.setRemoteDescription(new RTCSessionDescription(offer));
+
+//     userStreamRef.current.getTracks().forEach((track) => {
+//       connection.addTrack(track, userStreamRef.current);
+//     });
+
+//     connection.createAnswer().then((answer) => {
+//       connection.setLocalDescription(answer);
+//       socketRef.current.emit("answer", answer, roomName, userId);
+//     });
+//   };
+
+//   const handleAnswer = (answer, userId) => {
+//     const connection = rtcConnections.current[userId];
+//     connection.setRemoteDescription(new RTCSessionDescription(answer));
+//   };
+
+//   const handleICECandidateEvent = (event, userId) => {
+//     if (event.candidate) {
+//       socketRef.current.emit("ice-candidate", event.candidate, roomName, userId);
+//     }
+//   };
+
+//   const handleNewIceCandidateMsg = (candidate, userId) => {
+//     const connection = rtcConnections.current[userId];
+//     connection.addIceCandidate(new RTCIceCandidate(candidate));
+//   };
+
+//   const handleTrackEvent = (event, userId) => {
+//     if (!peerVideoRefs.current[userId]) {
+//       peerVideoRefs.current[userId] = document.createElement("video");
+//       peerVideoRefs.current[userId].autoPlay = true;
+//       document.body.appendChild(peerVideoRefs.current[userId]);
+//     }
+//     peerVideoRefs.current[userId].srcObject = event.streams[0];
+//   };
+
+//   const toggleMediaStream = (type, state) => {
+//     userStreamRef.current.getTracks().forEach((track) => {
+//       if (track.kind === type) {
+//         track.enabled = !state;
+//       }
+//     });
+//   };
+
+//   const toggleMic = () => {
+//     toggleMediaStream("audio", micActive);
+//     setMicActive((prev) => !prev);
+//   };
+
+//   const toggleCamera = () => {
+//     toggleMediaStream("video", cameraActive);
+//     setCameraActive((prev) => !prev);
+//   };
+
+//   const leaveRoom = () => {
+//     socketRef.current.emit("leave", roomName);
+
+//     if (userVideoRef.current.srcObject) {
+//       userVideoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+//     }
+
+//     Object.values(peerVideoRefs.current).forEach((videoRef) => {
+//       if (videoRef.srcObject) {
+//         videoRef.srcObject.getTracks().forEach((track) => track.stop());
+//       }
+//     });
+
+//     Object.values(rtcConnections.current).forEach((connection) => {
+//       connection.ontrack = null;
+//       connection.onicecandidate = null;
+//       connection.close();
+//     });
+
+//     peerVideoRefs.current = {};
+//     rtcConnections.current = {};
+//     router.push("/");
+//   };
+
+//   return (
+//     <div>
+//       <video autoPlay ref={userVideoRef} />
+//       <div id="peer-videos">
+//         {Object.values(peerVideoRefs.current).map((videoRef, index) => (
+//           <video key={index} autoPlay ref={videoRef} />
+//         ))}
+//       </div>
+//       <button onClick={toggleMic} type="button">
+//         {micActive ? "Mute Mic" : "Unmute Mic"}
+//       </button>
+//       <button onClick={leaveRoom} type="button">
+//         Leave
+//       </button>
+//       <button onClick={toggleCamera} type="button">
+//         {cameraActive ? "Stop Camera" : "Start Camera"}
+//       </button>
+//     </div>
+//   );
+// };
+
+// export default Room;
