@@ -8,7 +8,7 @@ const ICE_SERVERS = {
 };
 
 const Room = () => {
-  useSocket();
+  // useSocket();
   const [micActive, setMicActive] = useState(true);
   const [cameraActive, setCameraActive] = useState(true);
 
