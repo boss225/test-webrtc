@@ -1,12 +1,14 @@
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import useSocket from "../hooks/useSocket";
 
 const ICE_SERVERS = {
   iceServers: [{ urls: "stun:openrelay.metered.ca:80" }],
 };
 
 const Room = () => {
+  useSocket();
   const [micActive, setMicActive] = useState(true);
   const [cameraActive, setCameraActive] = useState(true);
 
