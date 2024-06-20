@@ -1,11 +1,14 @@
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
+import useSocket from "../hooks/useSocket";
+
 import styles from '../styles/Home.module.css'
 
 export default function Home() {
   const router = useRouter()
   const [roomName, setRoomName] = useState('')
+  useSocket();
 
   const joinRoom = () => {
     router.push(`/room/${roomName || Math.random().toString(36).slice(2)}`)
