@@ -45,6 +45,7 @@ export function useWebRTC(userId: string, username: string) {
   const signalingConnection = useRef<EventSource | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const iceCandidateQueue = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
 
   // Khởi tạo local stream
   const initializeMedia = useCallback(async (video: boolean, audio: boolean) => {
@@ -278,13 +279,33 @@ export function useWebRTC(userId: string, username: string) {
     // Handle remote stream
     pc.ontrack = (event) => {
       console.log('Received remote track:', event.track.kind, 'enabled:', event.track.enabled, 'from:', targetUserId);
-      console.log('Remote stream tracks:', event.streams[0].getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      console.log('Remote stream tracks:', event.streams[0]?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
       
-      setRemoteStreams(prev => {
-        const newMap = new Map(prev);
-        newMap.set(targetUserId, event.streams[0]);
-        return newMap;
-      });
+      if (event.streams && event.streams.length > 0) {
+        const remoteStream = event.streams[0];
+        
+        // Listen for track ended
+        event.track.onended = () => {
+          console.log('Remote track ended:', event.track.kind, 'from:', targetUserId);
+        };
+        
+        setRemoteStreams(prev => {
+          const newMap = new Map(prev);
+          // Merge tracks if stream already exists
+          const existingStream = newMap.get(targetUserId);
+          if (existingStream) {
+            // Add new track to existing stream
+            event.track.onended = () => {
+              console.log('Remote track ended:', event.track.kind, 'from:', targetUserId);
+            };
+            existingStream.addTrack(event.track);
+            newMap.set(targetUserId, existingStream);
+          } else {
+            newMap.set(targetUserId, remoteStream);
+          }
+          return newMap;
+        });
+      }
     };
 
     // Connection state monitoring
@@ -333,7 +354,24 @@ export function useWebRTC(userId: string, username: string) {
   const createOffer = useCallback(async (targetUserId: string) => {
     try {
       console.log('Creating offer for:', targetUserId);
-      const pc = createPeerConnection(targetUserId);
+      
+      // Check if peer connection already exists and is in a valid state
+      let pc = peerConnections.current.get(targetUserId);
+      if (pc) {
+        if (pc.signalingState === 'stable' || pc.signalingState === 'closed') {
+          // Connection is stable or closed, we can create a new offer
+          if (pc.signalingState === 'closed') {
+            pc.close();
+            pc = createPeerConnection(targetUserId);
+          }
+        } else {
+          // Connection is in progress, don't create duplicate offer
+          console.log('Offer already in progress for:', targetUserId, 'state:', pc.signalingState);
+          return;
+        }
+      } else {
+        pc = createPeerConnection(targetUserId);
+      }
       
       const offer = await pc.createOffer({
         offerToReceiveAudio: true,
@@ -364,10 +402,33 @@ export function useWebRTC(userId: string, username: string) {
   const handleOffer = useCallback(async (from: string, offer: RTCSessionDescriptionInit) => {
     try {
       console.log('Handling offer from:', from);
-      const pc = createPeerConnection(from);
+      
+      // Check if peer connection already exists
+      let pc = peerConnections.current.get(from);
+      if (!pc) {
+        pc = createPeerConnection(from);
+      } else if (pc.signalingState !== 'stable') {
+        console.warn('Peer connection exists but not stable, closing and recreating:', pc.signalingState);
+        pc.close();
+        pc = createPeerConnection(from);
+      }
       
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
       console.log('Remote description set for offer from:', from);
+      
+      // Process queued ICE candidates
+      const queuedCandidates = iceCandidateQueue.current.get(from) || [];
+      if (queuedCandidates.length > 0) {
+        console.log('Processing', queuedCandidates.length, 'queued ICE candidates for:', from);
+        for (const candidate of queuedCandidates) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (err) {
+            console.warn('Error adding queued ICE candidate:', err);
+          }
+        }
+        iceCandidateQueue.current.delete(from);
+      }
       
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -396,11 +457,30 @@ export function useWebRTC(userId: string, username: string) {
       console.log('Handling answer from:', from);
       const pc = peerConnections.current.get(from);
       
-      if (pc && pc.signalingState !== 'stable') {
+      if (!pc) {
+        console.warn('No peer connection found for:', from);
+        return;
+      }
+
+      if (pc.signalingState === 'have-local-offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
         console.log('Remote description set for answer from:', from);
+        
+        // Process queued ICE candidates
+        const queuedCandidates = iceCandidateQueue.current.get(from) || [];
+        if (queuedCandidates.length > 0) {
+          console.log('Processing', queuedCandidates.length, 'queued ICE candidates for:', from);
+          for (const candidate of queuedCandidates) {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (err) {
+              console.warn('Error adding queued ICE candidate:', err);
+            }
+          }
+          iceCandidateQueue.current.delete(from);
+        }
       } else {
-        console.warn('Cannot set remote description, signaling state:', pc?.signalingState);
+        console.warn('Cannot set remote description, signaling state:', pc.signalingState);
       }
     } catch (error) {
       console.error('Error handling answer:', error);
@@ -412,11 +492,20 @@ export function useWebRTC(userId: string, username: string) {
     try {
       const pc = peerConnections.current.get(from);
       
-      if (pc && pc.remoteDescription) {
+      if (!pc) {
+        console.warn('No peer connection found for ICE candidate from:', from);
+        return;
+      }
+
+      if (pc.remoteDescription) {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
         console.log('ICE candidate added for:', from);
       } else {
-        console.warn('Cannot add ICE candidate, remote description not set for:', from);
+        // Queue the candidate if remote description isn't set yet
+        console.log('Queueing ICE candidate for:', from, 'remote description not set yet');
+        const queue = iceCandidateQueue.current.get(from) || [];
+        queue.push(candidate);
+        iceCandidateQueue.current.set(from, queue);
       }
     } catch (error) {
       console.error('Error handling ICE candidate:', error);
@@ -473,7 +562,20 @@ export function useWebRTC(userId: string, username: string) {
 
               case 'user-joined':
                 if (data.participant.id !== userId) {
-                  setParticipants(prev => [...prev, data.participant]);
+                  setParticipants(prev => {
+                    // Avoid duplicates
+                    if (prev.find(p => p.id === data.participant.id)) {
+                      return prev;
+                    }
+                    return [...prev, data.participant];
+                  });
+                  // Create offer for the newly joined user
+                  // Wait a bit to ensure media is initialized
+                  setTimeout(async () => {
+                    if (isSubscribed && isInitialized) {
+                      await createOffer(data.participant.id);
+                    }
+                  }, 1000);
                 }
                 break;
 
@@ -489,6 +591,8 @@ export function useWebRTC(userId: string, username: string) {
                   pc.close();
                   peerConnections.current.delete(data.from);
                 }
+                // Clean up ICE candidate queue
+                iceCandidateQueue.current.delete(data.from);
                 break;
 
               case 'media-state-changed':
@@ -543,6 +647,7 @@ export function useWebRTC(userId: string, username: string) {
         pc.close();
       });
       peerConnections.current.clear();
+      iceCandidateQueue.current.clear();
       
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());

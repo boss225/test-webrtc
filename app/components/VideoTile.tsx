@@ -19,21 +19,31 @@ export default function VideoTile({ participant, stream, isLocal }: VideoTilePro
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+      // Ensure video plays
+      videoRef.current.play().catch(err => {
+        console.warn('Error playing video:', err);
+      });
+    } else if (videoRef.current && !stream) {
+      videoRef.current.srcObject = null;
     }
   }, [stream]);
 
   return (
     <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">
-      {participant.isCameraOn && stream ? (
+      {/* Always render video element if stream exists (for audio) */}
+      {stream && (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isLocal}
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover ${!participant.isCameraOn ? 'hidden' : ''}`}
         />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center">
+      )}
+      
+      {/* Show placeholder when camera is off or no stream */}
+      {(!participant.isCameraOn || !stream) && (
+        <div className="w-full h-full flex items-center justify-center absolute inset-0">
           <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white text-4xl font-bold">
             {participant.username.charAt(0).toUpperCase()}
           </div>
