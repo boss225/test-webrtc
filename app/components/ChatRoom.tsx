@@ -9,6 +9,7 @@ import VideoControls from './VideoControls';
 import UserProfile from './UserProfile';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useAuth } from '../contexts/AuthContext';
+import ConnectionStatus from './ConnectionStatus';
 
 export default function ChatRoom() {
   const { userId, username, logout } = useAuth();
@@ -24,6 +25,7 @@ export default function ChatRoom() {
     isMicOn,
     toggleCamera,
     toggleMic,
+    connectionStates,
   } = useWebRTC(userId!, username!);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function ChatRoom() {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         if (data.type === 'initial') {
           setMessages(data.messages);
         } else {
@@ -90,19 +92,17 @@ export default function ChatRoom() {
               </div>
               <h1 className="text-xl font-bold">Video Chat Room</h1>
             </div>
-            
+
             <div className="flex items-center gap-2">
-              <span className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-                isConnected 
-                  ? 'bg-green-500/20 text-green-100' 
+              <span className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${isConnected
+                  ? 'bg-green-500/20 text-green-100'
                   : 'bg-red-500/20 text-red-100'
-              }`}>
-                <span className={`w-2 h-2 rounded-full ${
-                  isConnected ? 'bg-green-300' : 'bg-red-300'
-                }`}></span>
+                }`}>
+                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-300' : 'bg-red-300'
+                  }`}></span>
                 {isConnected ? 'Connected' : 'Disconnected'}
               </span>
-              
+
               <span className="flex items-center gap-2 px-3 py-1.5 bg-white/20 rounded-full text-sm font-medium">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
@@ -141,9 +141,8 @@ export default function ChatRoom() {
 
       <div className="flex-1 max-w-7xl mx-auto w-full flex overflow-hidden">
         {/* Video Section */}
-        <div className={`flex flex-col bg-gray-900 ${
-          showVideo ? 'w-2/3' : 'w-0'
-        } transition-all duration-300 overflow-hidden`}>
+        <div className={`flex flex-col bg-gray-900 ${showVideo ? 'w-2/3' : 'w-0'
+          } transition-all duration-300 overflow-hidden`}>
           <div className="flex-1 overflow-hidden">
             <VideoGrid
               localStream={localStream}
@@ -165,9 +164,8 @@ export default function ChatRoom() {
         </div>
 
         {/* Chat Section */}
-        <div className={`flex flex-col bg-white ${
-          showVideo ? 'w-1/3' : 'w-full'
-        } transition-all duration-300 border-l shadow-lg`}>
+        <div className={`flex flex-col bg-white ${showVideo ? 'w-1/3' : 'w-full'
+          } transition-all duration-300 border-l shadow-lg`}>
           {/* Chat header */}
           <div className="p-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
             <h2 className="font-semibold flex items-center gap-2">
@@ -189,6 +187,12 @@ export default function ChatRoom() {
           />
         </div>
       </div>
+      {process.env.NODE_ENV === 'development' && (
+        <ConnectionStatus
+          connectionStates={connectionStates}
+          participants={participants}
+        />
+      )}
     </div>
   );
 }
