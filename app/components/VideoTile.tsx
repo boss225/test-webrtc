@@ -15,6 +15,10 @@ interface VideoTileProps {
 
 export default function VideoTile({ participant, stream, isLocal }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Check if stream has video track
+  const hasVideoTrack = stream && stream.getVideoTracks().length > 0;
+  const videoTrackEnabled = hasVideoTrack && stream.getVideoTracks().some(track => track.enabled && track.readyState === 'live');
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -28,21 +32,34 @@ export default function VideoTile({ participant, stream, isLocal }: VideoTilePro
     }
   }, [stream]);
 
+  useEffect(() => {
+    // Log video track state for debugging
+    if (stream) {
+      const videoTracks = stream.getVideoTracks();
+      console.log(`VideoTile ${participant.username}:`, {
+        hasVideoTrack: videoTracks.length > 0,
+        videoTrackEnabled: videoTracks.some(t => t.enabled && t.readyState === 'live'),
+        participantIsCameraOn: participant.isCameraOn,
+        tracks: videoTracks.map(t => ({ enabled: t.enabled, readyState: t.readyState }))
+      });
+    }
+  }, [stream, participant.isCameraOn, participant.username]);
+
   return (
     <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">
-      {/* Always render video element if stream exists (for audio) */}
+      {/* Always render video element if stream exists (for audio and video) */}
       {stream && (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isLocal}
-          className={`w-full h-full object-cover ${!participant.isCameraOn ? 'hidden' : ''}`}
+          className={`w-full h-full object-cover ${!videoTrackEnabled ? 'hidden' : ''}`}
         />
       )}
       
-      {/* Show placeholder when camera is off or no stream */}
-      {(!participant.isCameraOn || !stream) && (
+      {/* Show placeholder when no video track or video track disabled */}
+      {!videoTrackEnabled && (
         <div className="w-full h-full flex items-center justify-center absolute inset-0">
           <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white text-4xl font-bold">
             {participant.username.charAt(0).toUpperCase()}

@@ -158,14 +158,57 @@ export function useWebRTC(userId: string, username: string) {
         setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
         setIsCameraOn(true);
         
-        peerConnections.current.forEach((pc) => {
+        // Add video track to all peer connections and renegotiate
+        for (const [peerId, pc] of peerConnections.current.entries()) {
           const sender = pc.getSenders().find(s => s.track?.kind === 'video');
           if (sender) {
-            sender.replaceTrack(newVideoTrack);
+            // Replace existing video track
+            await sender.replaceTrack(newVideoTrack);
+            // Renegotiate if connection is stable
+            if (pc.signalingState === 'stable') {
+              try {
+                const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+                await pc.setLocalDescription(offer);
+                await fetch('/api/signal', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'offer',
+                    from: userId,
+                    to: peerId,
+                    data: offer,
+                  }),
+                });
+                console.log('Renegotiated offer sent for video track to:', peerId);
+              } catch (err) {
+                console.error('Error renegotiating for video:', err);
+              }
+            }
           } else {
+            // Add new video track
             pc.addTrack(newVideoTrack, localStreamRef.current!);
+            // Renegotiate if connection is stable
+            if (pc.signalingState === 'stable') {
+              try {
+                const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+                await pc.setLocalDescription(offer);
+                await fetch('/api/signal', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'offer',
+                    from: userId,
+                    to: peerId,
+                    data: offer,
+                  }),
+                });
+                console.log('Renegotiated offer sent for new video track to:', peerId);
+              } catch (err) {
+                console.error('Error renegotiating for new video:', err);
+              }
+            }
           }
-        });
+        }
         
         await fetch('/api/update-media-state', {
           method: 'POST',
@@ -407,8 +450,12 @@ export function useWebRTC(userId: string, username: string) {
       let pc = peerConnections.current.get(from);
       if (!pc) {
         pc = createPeerConnection(from);
-      } else if (pc.signalingState !== 'stable') {
-        console.warn('Peer connection exists but not stable, closing and recreating:', pc.signalingState);
+      } else if (pc.signalingState === 'stable') {
+        // This is a renegotiation offer, we can handle it
+        console.log('Renegotiation offer received from:', from);
+      } else if (pc.signalingState !== 'have-local-offer') {
+        // Connection is in an invalid state, recreate it
+        console.warn('Peer connection exists but in invalid state, closing and recreating:', pc.signalingState);
         pc.close();
         pc = createPeerConnection(from);
       }
