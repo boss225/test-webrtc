@@ -47,6 +47,52 @@ export function useWebRTC(userId: string, username: string) {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const iceCandidateQueue = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
 
+  // Cấu hình audio codec để có chất lượng tốt nhất
+  const configureAudioCodec = useCallback(async (sender: RTCRtpSender, params: RTCRtpSendParameters) => {
+    // Ưu tiên Opus codec với bitrate cao cho voice quality tốt
+    const opusCodec = params.codecs.find(codec => 
+      codec.mimeType.toLowerCase().includes('opus')
+    );
+    
+    if (opusCodec) {
+      // Sắp xếp lại để Opus lên đầu
+      params.codecs = [
+        opusCodec,
+        ...params.codecs.filter(c => c !== opusCodec)
+      ];
+    }
+
+    // Cấu hình bitrate cho audio (32-64 kbps là tốt cho voice)
+    if (params.encodings && params.encodings.length > 0) {
+      params.encodings[0].maxBitrate = 64000; // 64 kbps cho chất lượng voice tốt
+    }
+
+    await sender.setParameters(params);
+    console.log('Audio sender configured with codec:', opusCodec?.mimeType || 'default');
+  }, []);
+
+  // Cấu hình audio sender để có chất lượng tốt nhất
+  const configureAudioSender = useCallback(async (sender: RTCRtpSender) => {
+    try {
+      const params = sender.getParameters();
+      if (!params.codecs || params.codecs.length === 0) {
+        // Nếu chưa có codecs, đợi một chút rồi thử lại
+        setTimeout(async () => {
+          try {
+            const retryParams = sender.getParameters();
+            await configureAudioCodec(sender, retryParams);
+          } catch (e) {
+            console.warn('Error configuring audio on retry:', e);
+          }
+        }, 100);
+        return;
+      }
+      await configureAudioCodec(sender, params);
+    } catch (error) {
+      console.warn('Error configuring audio sender:', error);
+    }
+  }, [configureAudioCodec]);
+
   // Khởi tạo local stream
   const initializeMedia = useCallback(async (video: boolean, audio: boolean) => {
     try {
@@ -65,6 +111,15 @@ export function useWebRTC(userId: string, username: string) {
           noiseSuppression: true,
           autoGainControl: true,
           sampleRate: 48000,
+          channelCount: { ideal: 1, min: 1 },
+          // Tối ưu cho voice (Chrome-specific properties)
+          ...({
+            googEchoCancellation: true,
+            googNoiseSuppression: true,
+            googAutoGainControl: true,
+            googHighpassFilter: true,
+            googTypingNoiseDetection: true,
+          } as Record<string, unknown>),
         } : false,
       };
 
@@ -98,8 +153,18 @@ export function useWebRTC(userId: string, username: string) {
         // Thêm tracks mới
         stream.getTracks().forEach(track => {
           try {
-            pc.addTrack(track, stream);
+            const sender = pc.addTrack(track, stream);
             console.log('Added track:', track.kind, 'to peer:', peerId);
+            
+            // Cấu hình audio quality nếu là audio track
+            if (track.kind === 'audio') {
+              // Đợi một chút để peer connection sẵn sàng
+              setTimeout(() => {
+                configureAudioSender(sender).catch(e => 
+                  console.warn('Error configuring audio sender:', e)
+                );
+              }, 200);
+            }
           } catch (e) {
             console.warn('Error adding track:', e);
           }
@@ -111,7 +176,7 @@ export function useWebRTC(userId: string, username: string) {
       console.error('Error accessing media devices:', error);
       throw error;
     }
-  }, []);
+  }, [configureAudioSender]);
 
   // Toggle camera
   const toggleCamera = useCallback(async () => {
@@ -258,6 +323,15 @@ export function useWebRTC(userId: string, username: string) {
             noiseSuppression: true,
             autoGainControl: true,
             sampleRate: 48000,
+            channelCount: { ideal: 1, min: 1 },
+            // Tối ưu cho voice (Chrome-specific properties)
+            ...({
+              googEchoCancellation: true,
+              googNoiseSuppression: true,
+              googAutoGainControl: true,
+              googHighpassFilter: true,
+              googTypingNoiseDetection: true,
+            } as Record<string, unknown>),
           } 
         });
         
@@ -271,8 +345,12 @@ export function useWebRTC(userId: string, username: string) {
           const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
           if (sender) {
             sender.replaceTrack(newAudioTrack);
+            // Reconfigure audio quality
+            configureAudioSender(sender).catch(e => console.warn('Error reconfiguring audio:', e));
           } else {
-            pc.addTrack(newAudioTrack, localStreamRef.current!);
+            const newSender = pc.addTrack(newAudioTrack, localStreamRef.current!);
+            // Configure audio quality
+            configureAudioSender(newSender).catch(e => console.warn('Error configuring new audio:', e));
           }
         });
         
@@ -285,7 +363,7 @@ export function useWebRTC(userId: string, username: string) {
     } catch (error) {
       console.error('Error toggling microphone:', error);
     }
-  }, [isMicOn, isCameraOn, userId, initializeMedia]);
+  }, [isMicOn, isCameraOn, userId, initializeMedia, configureAudioSender]);
 
   // Tạo peer connection với detailed logging
   const createPeerConnection = useCallback((targetUserId: string) => {
@@ -299,6 +377,16 @@ export function useWebRTC(userId: string, username: string) {
         console.log('Adding local track to peer:', track.kind, track.enabled, 'for:', targetUserId);
         const sender = pc.addTrack(track, localStreamRef.current!);
         console.log('Track added, sender:', sender.track?.kind);
+        
+        // Cấu hình audio quality nếu là audio track
+        if (track.kind === 'audio') {
+          // Đợi một chút để peer connection sẵn sàng
+          setTimeout(() => {
+            configureAudioSender(sender).catch(e => 
+              console.warn('Error configuring audio sender in createPeerConnection:', e)
+            );
+          }, 200);
+        }
       });
     }
 
@@ -391,7 +479,7 @@ export function useWebRTC(userId: string, username: string) {
 
     peerConnections.current.set(targetUserId, pc);
     return pc;
-  }, [userId]);
+  }, [userId, configureAudioSender]);
 
   // Tạo offer
   const createOffer = useCallback(async (targetUserId: string) => {

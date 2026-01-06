@@ -16,7 +16,7 @@ export default function MessageList({ messages, currentUsername }: MessageListPr
   }, [messages]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-gray-50 to-gray-100">
+    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-gray-50 to-gray-100" style={{ maxHeight: '72.5vh' }}>
       {messages.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <div className="text-center text-gray-400">
