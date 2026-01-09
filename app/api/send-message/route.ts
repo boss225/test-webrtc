@@ -1,70 +1,125 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import sessionStore from '@/lib/sessionStore';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, text, roomId = null } = body;
+    const { username, text, roomId, userId } = body;
 
-    if (!username || !text) {
+    console.log('[Send Message] Request:', { 
+      username, 
+      text: text?.substring(0, 50), 
+      roomId, 
+      userId 
+    });
+
+    // Validation
+    if (!username || !text || !roomId) {
+      console.error('[Send Message] Missing required fields');
       return NextResponse.json(
-        { error: 'Username và message là bắt buộc' },
+        { error: 'Username, text và roomId là bắt buộc' },
         { status: 400 }
       );
     }
 
-    // Lấy user từ database
-    const { data: user, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('username', username)
-      .single();
-
-    if (userError || !user) {
+    if (!text.trim()) {
       return NextResponse.json(
-        { error: 'User không tồn tại' },
+        { error: 'Message không được để trống' },
+        { status: 400 }
+      );
+    }
+
+    // Validate roomId format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(roomId)) {
+      console.error('[Send Message] Invalid roomId format:', roomId);
+      return NextResponse.json(
+        { error: 'RoomId không hợp lệ' },
+        { status: 400 }
+      );
+    }
+
+    // Verify room exists
+    const { data: room, error: roomError } = await supabaseAdmin
+      .from('rooms')
+      .select('id, name')
+      .eq('id', roomId)
+      .maybeSingle();
+
+    if (roomError || !room) {
+      console.error('[Send Message] Room not found:', roomId, roomError);
+      return NextResponse.json(
+        { error: 'Room không tồn tại' },
         { status: 404 }
       );
     }
 
-    // Lấy default room nếu không có roomId
-    let finalRoomId = roomId;
-    if (!finalRoomId) {
-      const { data: defaultRoom } = await supabaseAdmin
-        .from('rooms')
+    // Get user ID if not provided
+    let finalUserId = userId;
+    
+    if (!finalUserId) {
+      console.log('[Send Message] Looking up user by username:', username);
+      const { data: user, error: userError } = await supabaseAdmin
+        .from('users')
         .select('id')
-        .eq('name', 'General Room')
-        .single();
+        .eq('username', username)
+        .maybeSingle();
 
-      finalRoomId = defaultRoom?.id;
+      if (userError) {
+        console.error('[Send Message] User lookup error:', userError);
+      }
+
+      finalUserId = user?.id;
     }
 
-    // Lưu message vào database
+    if (!finalUserId) {
+      console.warn('[Send Message] User ID not found for username:', username);
+    }
+
+    // Insert message - ENSURE room_id is included
+    console.log('[Send Message] Inserting message:', {
+      room_id: roomId,
+      user_id: finalUserId,
+      username: username,
+      text_length: text.length
+    });
+
     const { data: message, error } = await supabaseAdmin
       .from('messages')
       .insert({
-        room_id: finalRoomId,
-        user_id: user.id,
-        username,
-        text,
+        room_id: roomId, // ← IMPORTANT: Must include room_id
+        user_id: finalUserId,
+        username: username,
+        text: text.trim(),
       })
       .select()
       .single();
 
     if (error) {
-      console.error('Database error:', error);
+      console.error('[Send Message] Database error:', error);
       return NextResponse.json(
-        { error: 'Lỗi khi lưu tin nhắn' },
+        { 
+          error: 'Lỗi khi lưu tin nhắn', 
+          details: error.message 
+        },
         { status: 500 }
       );
     }
 
+    console.log('[Send Message] Success:', {
+      id: message.id,
+      room_id: message.room_id,
+      username: message.username
+    });
+
     return NextResponse.json(message);
   } catch (error) {
-    console.error('Send message error:', error);
+    console.error('[Send Message] Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Lỗi khi gửi tin nhắn' },
+      { 
+        error: 'Lỗi không mong muốn', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }

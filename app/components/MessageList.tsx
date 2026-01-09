@@ -6,18 +6,32 @@ import { useEffect, useRef } from 'react';
 interface MessageListProps {
   messages: Message[];
   currentUsername: string;
+  isLoading?: boolean;
 }
 
-export default function MessageList({ messages, currentUsername }: MessageListProps) {
+export default function MessageList({ messages, currentUsername, isLoading }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  console.log('[MessageList] Rendering', messages.length, 'messages');
+
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-gray-50 to-gray-100" style={{ maxHeight: '72.5vh' }}>
-      {messages.length === 0 ? (
+    <div 
+      ref={containerRef}
+      className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-gray-50 to-gray-100"
+    >
+      {isLoading ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải tin nhắn...</p>
+          </div>
+        </div>
+      ) : messages.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <div className="text-center text-gray-400">
             <svg
@@ -39,8 +53,10 @@ export default function MessageList({ messages, currentUsername }: MessageListPr
         </div>
       ) : (
         <>
-          {messages.map((message) => {
+          {messages.map((message, index) => {
             const isOwnMessage = message.username === currentUsername;
+            const showAvatar = index === 0 || messages[index - 1].username !== message.username;
+            const isLastFromUser = index === messages.length - 1 || messages[index + 1].username !== message.username;
             
             return (
               <div
@@ -49,16 +65,20 @@ export default function MessageList({ messages, currentUsername }: MessageListPr
               >
                 <div className={`flex items-end gap-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                   {/* Avatar */}
-                  {!isOwnMessage && (
+                  {!isOwnMessage && showAvatar && (
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
                       {message.username.charAt(0).toUpperCase()}
                     </div>
                   )}
+                  
+                  {!isOwnMessage && !showAvatar && (
+                    <div className="w-8 h-8 flex-shrink-0" />
+                  )}
 
                   {/* Message bubble */}
                   <div className="flex flex-col">
-                    {/* Username (chỉ hiện với message của người khác) */}
-                    {!isOwnMessage && (
+                    {/* Username (chỉ hiện khi đầu tiên của user) */}
+                    {!isOwnMessage && showAvatar && (
                       <span className="text-xs font-semibold text-gray-600 mb-1 ml-3">
                         {message.username}
                       </span>
@@ -66,10 +86,14 @@ export default function MessageList({ messages, currentUsername }: MessageListPr
 
                     {/* Bubble */}
                     <div
-                      className={`relative px-4 py-2 rounded-2xl shadow-sm ${
+                      className={`relative px-4 py-2 shadow-sm ${
                         isOwnMessage
-                          ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-sm'
-                          : 'bg-white text-gray-800 rounded-bl-sm border border-gray-200'
+                          ? `bg-gradient-to-br from-blue-500 to-blue-600 text-white ${
+                              isLastFromUser ? 'rounded-br-sm' : 'rounded-br-lg'
+                            } rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl`
+                          : `bg-white text-gray-800 border border-gray-200 ${
+                              isLastFromUser ? 'rounded-bl-sm' : 'rounded-bl-lg'
+                            } rounded-tl-2xl rounded-tr-2xl rounded-br-2xl`
                       }`}
                     >
                       {/* Message text */}
@@ -84,7 +108,7 @@ export default function MessageList({ messages, currentUsername }: MessageListPr
                         <span className={`text-xs ${
                           isOwnMessage ? 'text-blue-100' : 'text-gray-500'
                         }`}>
-                          {new Date(message.timestamp).toLocaleTimeString('vi-VN', {
+                          {new Date(message.created_at).toLocaleTimeString('vi-VN', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}

@@ -1,13 +1,18 @@
 {
-  "name": "chat-sse-app",
-  "version": "0.1.0",
+  "name": "VibeRoom",
+  "version": "1.0.0",
+  "description": "Real-time video conferencing and chat platform",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate:types": "tsx scripts/generate-types.ts"
   },
+  "keywords": ["video", "chat", "webrtc", "conference", "streaming"],
+  "author": "VibeRoom Team",
+  "license": "MIT",
   "dependencies": {
     "@supabase/supabase-js": "^2.90.0",
     "bcryptjs": "^3.0.3",
@@ -26,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "tsx": "^4.19.3"
   }
 }

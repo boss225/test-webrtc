@@ -1,11 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import AuthForm from './components/AuthForm';
+import RoomList from './components/RoomList';
 import ChatRoom from './components/ChatRoom';
+import { Room } from '@/types';
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
   if (isLoading) {
     return (
@@ -18,5 +22,13 @@ export default function Home() {
     );
   }
 
-  return isAuthenticated ? <ChatRoom /> : <AuthForm />;
+  if (!isAuthenticated) {
+    return <AuthForm />;
+  }
+
+  if (selectedRoom) {
+    return <ChatRoom initialRoom={selectedRoom} onBack={() => setSelectedRoom(null)} />;
+  }
+
+  return <RoomList onRoomSelect={setSelectedRoom} />;
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { BRAND_CONFIG } from '../config/brand';
 
 export default function LoginForm() {
   const [username, setUsername] = useState('');
@@ -14,21 +15,21 @@ export default function LoginForm() {
     setError('');
 
     if (!username.trim()) {
-      setError('Vui lòng nhập username');
+      setError('Please enter username');
       return;
     }
 
     if (username.trim().length < 2) {
-      setError('Username phải có ít nhất 2 ký tự');
+      setError('Username must be at least 2 characters');
       return;
     }
 
     setIsSubmitting(true);
 
-    const result = await login(username.trim());
+    const result = await login(username.trim(), 'password');
 
     if (!result.success) {
-      setError(result.error || 'Đăng nhập thất bại');
+      setError(result.error || 'Login failed');
       setIsSubmitting(false);
     }
   };
@@ -53,10 +54,10 @@ export default function LoginForm() {
             </svg>
           </div>
           <h2 className="text-3xl font-bold text-gray-800">
-            Video Chat Room
+            {BRAND_CONFIG.name}
           </h2>
           <p className="text-gray-600 mt-2">
-            Nhập tên của bạn để bắt đầu
+            Enter your username to start
           </p>
         </div>
 
@@ -73,14 +74,14 @@ export default function LoginForm() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Nhập username của bạn..."
+              placeholder="Enter your username..."
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               autoFocus
               disabled={isSubmitting}
               maxLength={20}
             />
             <p className="text-xs text-gray-500 mt-1">
-              {username.length}/20 ký tự
+              {username.length}/20 characters
             </p>
           </div>
 
@@ -109,7 +110,7 @@ export default function LoginForm() {
             {isSubmitting ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Đang kết nối...
+                Connecting...
               </>
             ) : (
               <>
@@ -126,7 +127,7 @@ export default function LoginForm() {
                     d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
                   />
                 </svg>
-                Tham gia ngay
+                Join now
               </>
             )}
           </button>
@@ -134,7 +135,7 @@ export default function LoginForm() {
 
         <div className="mt-6 pt-6 border-t border-gray-200">
           <p className="text-xs text-gray-500 text-center">
-            🔒 Username của bạn sẽ được giữ riêng tư và không thể thay đổi trong phiên này
+            🔒 Your username will be kept private and cannot be changed in this session
           </p>
         </div>
       </div>

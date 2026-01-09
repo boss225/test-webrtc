@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import Logo from './Logo';
+import { BRAND_CONFIG } from '../config/brand';
 
 export default function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,7 +21,6 @@ export default function AuthForm() {
     e.preventDefault();
     setError('');
 
-    // Validation
     if (!formData.email || !formData.password) {
       setError('Vui lòng điền đầy đủ thông tin');
       return;
@@ -58,73 +59,28 @@ export default function AuthForm() {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    setError(''); // Clear error when user types
+    setError('');
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-8 text-white">
           <div className="flex justify-center mb-4">
             <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center">
-              <svg
-                className="w-10 h-10"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-              </svg>
+              <Logo size="lg" showText={false} variant="white" />
             </div>
           </div>
-          <h2 className="text-3xl font-bold text-center">Video Chat</h2>
+          <h2 className="text-3xl font-bold text-center">{BRAND_CONFIG.name}</h2>
           <p className="text-center text-blue-100 mt-2">
             {isLogin
-              ? 'Đăng nhập để bắt đầu trò chuyện'
-              : 'Tạo tài khoản mới'}
+              ? 'Login to start connecting'
+              : 'Create a new account'}
           </p>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b">
-          <button
-            onClick={() => {
-              setIsLogin(true);
-              setError('');
-              setFormData({
-                email: '',
-                username: '',
-                password: '',
-                confirmPassword: '',
-              });
-            }}
-            className={`flex-1 py-4 text-center font-medium transition-all ${
-              isLogin
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Đăng nhập
-          </button>
-          <button
-            onClick={() => {
-              setIsLogin(false);
-              setError('');
-              setFormData({
-                email: '',
-                username: '',
-                password: '',
-                confirmPassword: '',
-              });
-            }}
-            className={`flex-1 py-4 text-center font-medium transition-all ${
-              !isLogin
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Đăng ký
-          </button>
+          <p className="text-center text-xs text-blue-200 mt-1">
+            {BRAND_CONFIG.tagline}
+          </p>
         </div>
 
         {/* Form */}
@@ -357,6 +313,9 @@ export default function AuthForm() {
                 </button>
               </>
             )}
+          </p>
+          <p className="text-xs text-gray-400 text-center mt-3">
+            © 2024 {BRAND_CONFIG.name}. All rights reserved.
           </p>
         </div>
       </div>

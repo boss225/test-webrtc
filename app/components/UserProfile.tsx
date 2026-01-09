@@ -19,12 +19,12 @@ export default function UserProfile() {
     <div className="relative">
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-all"
+        className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all"
       >
-        <div className="w-8 h-8 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold">
+        <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center font-bold text-white">
           {username?.charAt(0).toUpperCase()}
         </div>
-        <span className="font-medium">{username}</span>
+        <span className="font-medium text-white">{username}</span>
         <svg
           className={`w-4 h-4 transition-transform ${showMenu ? 'rotate-180' : ''}`}
           fill="none"
@@ -47,14 +47,14 @@ export default function UserProfile() {
             onClick={() => setShowMenu(false)}
           ></div>
           <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl z-20 overflow-hidden">
-            <div className="p-4 bg-gray-50 border-b">
+            <div className="p-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xl">
+                <div className="w-12 h-12 rounded-full bg-white/30 flex items-center justify-center font-bold text-xl">
                   {username?.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-800">{username}</p>
-                  <p className="text-xs text-gray-500">Online</p>
+                  <p className="font-semibold">{username}</p>
+                  <p className="text-xs text-blue-100">● Online</p>
                 </div>
               </div>
             </div>
