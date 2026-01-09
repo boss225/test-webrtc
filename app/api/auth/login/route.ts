@@ -1,37 +1,66 @@
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
+import { comparePassword, generateToken } from '@/lib/auth';
 import sessionStore from '@/lib/sessionStore';
 
 export async function POST(request: Request) {
   try {
-    const { username } = await request.json();
+    const { email, password } = await request.json();
 
-    if (!username || username.trim().length < 2) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'Username phải có ít nhất 2 ký tự' },
+        { error: 'Email và password là bắt buộc' },
         { status: 400 }
       );
     }
 
-    const trimmedUsername = username.trim();
+    // Find user by email
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .single();
 
-    // Kiểm tra username đã tồn tại
-    if (sessionStore.isUsernameTaken(trimmedUsername)) {
+    if (error || !user) {
       return NextResponse.json(
-        { error: 'Username đã được sử dụng. Vui lòng chọn tên khác.' },
-        { status: 409 }
+        { error: 'Email hoặc mật khẩu không đúng' },
+        { status: 401 }
       );
     }
 
-    // Tạo userId unique
-    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Verify password
+    const isValidPassword = await comparePassword(password, user.password_hash);
 
-    // Tạo session
-    const session = sessionStore.createSession(userId, trimmedUsername);
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { error: 'Email hoặc mật khẩu không đúng' },
+        { status: 401 }
+      );
+    }
+
+    // Update online status
+    await supabaseAdmin
+      .from('users')
+      .update({ is_online: true, last_seen: new Date().toISOString() })
+      .eq('id', user.id);
+
+    // Generate session ID
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create session in memory
+    await sessionStore.createSession(sessionId, user.username, user.id);
+
+    // Generate token
+    const token = generateToken(user.id, user.email);
+
+    // Remove sensitive data
+    const { password_hash, ...userWithoutPassword } = user;
 
     return NextResponse.json({
       success: true,
-      userId: session.userId,
-      username: session.username,
+      user: userWithoutPassword,
+      token,
+      sessionId,
     });
   } catch (error) {
     console.error('Login error:', error);

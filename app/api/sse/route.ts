@@ -1,36 +1,66 @@
-import messageStore from '@/lib/messageStore';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const roomId = url.searchParams.get('roomId');
+
   const responseStream = new ReadableStream({
     async start(controller) {
-      // Gửi tất cả tin nhắn hiện có
-      const existingMessages = messageStore.getMessages();
-      const initialData = `data: ${JSON.stringify({ 
-        type: 'initial', 
-        messages: existingMessages 
-      })}\n\n`;
-      controller.enqueue(new TextEncoder().encode(initialData));
+      // Lấy messages từ database
+      const { data: messages, error } = await supabaseAdmin
+        .from('messages')
+        .select('*')
+        .eq('room_id', roomId || '')
+        .order('created_at', { ascending: true })
+        .limit(100);
 
-      // Thêm client vào store
-      messageStore.addClient(controller);
+      if (!error && messages) {
+        const initialData = `data: ${JSON.stringify({ 
+          type: 'initial', 
+          messages 
+        })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(initialData));
+      }
 
-      // Gửi heartbeat mỗi 30 giây
+      // Subscribe to realtime changes
+      const channel = supabaseAdmin
+        .channel(`room:${roomId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `room_id=eq.${roomId}`,
+          },
+          (payload) => {
+            const data = `data: ${JSON.stringify(payload.new)}\n\n`;
+            try {
+              controller.enqueue(new TextEncoder().encode(data));
+            } catch (error) {
+              console.error('Error sending message:', error);
+            }
+          }
+        )
+        .subscribe();
+
+      // Heartbeat
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(new TextEncoder().encode(':heartbeat\n\n'));
         } catch (error) {
           clearInterval(heartbeat);
-          messageStore.removeClient(controller);
+          channel.unsubscribe();
         }
       }, 30000);
 
-      // Cleanup khi client ngắt kết nối
+      // Cleanup
       request.signal.addEventListener('abort', () => {
         clearInterval(heartbeat);
-        messageStore.removeClient(controller);
+        channel.unsubscribe();
         controller.close();
       });
     },
@@ -41,7 +71,7 @@ export async function GET(request: Request) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no', // Disable Nginx buffering
+      'X-Accel-Buffering': 'no',
     },
   });
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from './contexts/AuthContext';
-import LoginForm from './components/LoginForm';
+import AuthForm from './components/AuthForm';
 import ChatRoom from './components/ChatRoom';
 
 export default function Home() {
@@ -18,5 +18,5 @@ export default function Home() {
     );
   }
 
-  return isAuthenticated ? <ChatRoom /> : <LoginForm />;
+  return isAuthenticated ? <ChatRoom /> : <AuthForm />;
 }

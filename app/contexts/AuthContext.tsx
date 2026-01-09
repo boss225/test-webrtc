@@ -1,12 +1,16 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User } from '@/lib/supabase';
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  user: User | null;
   userId: string | null;
   username: string | null;
-  login: (username: string) => Promise<{ success: boolean; error?: string }>;
+  supabaseUserId: string | null;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (email: string, username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -15,39 +19,48 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Verify session khi load
   useEffect(() => {
     const verifySession = async () => {
-      const storedUserId = localStorage.getItem('userId');
-      const storedUsername = localStorage.getItem('username');
+      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      const storedSessionId = localStorage.getItem('sessionId');
 
-      if (storedUserId && storedUsername) {
+      if (token && storedUser && storedSessionId) {
         try {
           const response = await fetch('/api/auth/verify', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: storedUserId }),
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ sessionId: storedSessionId }),
           });
 
           const data = await response.json();
 
-          if (data.valid) {
+          if (data.valid && data.user) {
             setIsAuthenticated(true);
-            setUserId(storedUserId);
-            setUsername(storedUsername);
+            setUser(data.user);
+            setUserId(storedSessionId);
+            setUsername(data.user.username);
+            setSupabaseUserId(data.user.id);
           } else {
-            // Session không hợp lệ, xóa localStorage
-            localStorage.removeItem('userId');
-            localStorage.removeItem('username');
+            // Clear invalid session
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('sessionId');
           }
         } catch (error) {
           console.error('Verify session error:', error);
-          localStorage.removeItem('userId');
-          localStorage.removeItem('username');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('sessionId');
         }
       }
 
@@ -57,12 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     verifySession();
   }, []);
 
-  const login = async (username: string): Promise<{ success: boolean; error?: string }> => {
+  const register = async (
+    email: string,
+    username: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ email, username, password }),
       });
 
       const data = await response.json();
@@ -71,12 +88,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error };
       }
 
-      // Lưu vào state và localStorage
+      // Auto login after register
+      return await login(email, password);
+    } catch (error) {
+      console.error('Register error:', error);
+      return { success: false, error: 'Lỗi kết nối. Vui lòng thử lại.' };
+    }
+  };
+
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error };
+      }
+
+      // Save to state and localStorage
       setIsAuthenticated(true);
-      setUserId(data.userId);
-      setUsername(data.username);
-      localStorage.setItem('userId', data.userId);
-      localStorage.setItem('username', data.username);
+      setUser(data.user);
+      setUserId(data.sessionId);
+      setUsername(data.user.username);
+      setSupabaseUserId(data.user.id);
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('sessionId', data.sessionId);
 
       return { success: true };
     } catch (error) {
@@ -98,21 +144,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Clear state và localStorage
+    // Clear state and localStorage
     setIsAuthenticated(false);
+    setUser(null);
     setUserId(null);
     setUsername(null);
-    localStorage.removeItem('userId');
-    localStorage.removeItem('username');
+    setSupabaseUserId(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('sessionId');
   };
 
   return (
     <AuthContext.Provider
       value={{
         isAuthenticated,
+        user,
         userId,
         username,
+        supabaseUserId,
         login,
+        register,
         logout,
         isLoading,
       }}

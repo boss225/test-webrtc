@@ -1,26 +1,39 @@
 export interface Message {
     id: string;
+    room_id: string;
+    user_id: string;
     username: string;
     text: string;
-    timestamp: Date;
-}
-
-export interface User {
+    created_at: string;
+  }
+  
+  export interface User {
     id: string;
     username: string;
-}
-
-export interface Participant {
+    created_at: string;
+    last_seen: string;
+    is_online: boolean;
+  }
+  
+  export interface Participant {
     id: string;
     username: string;
     isCameraOn: boolean;
     isMicOn: boolean;
-}
-
-export interface SignalData {
+    userId?: string;
+  }
+  
+  export interface SignalData {
     type: 'offer' | 'answer' | 'ice-candidate' | 'user-joined' | 'user-left' | 'media-state-changed';
     from: string;
     to?: string;
     data?: unknown;
     participant?: Participant;
-}
+  }
+  
+  export interface Room {
+    id: string;
+    name: string;
+    created_at: string;
+    created_by?: string;
+  }
