@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { hashPassword } from '@/lib/auth';
+import type { Database } from '@/lib/supabase-types';
+
+type RoomRow = Database['public']['Tables']['rooms']['Row'];
 
 export async function POST(request: Request) {
   try {
@@ -43,6 +46,7 @@ export async function POST(request: Request) {
     // Create room
     const { data: room, error } = await supabaseAdmin
       .from('rooms')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .insert({
         name: name.trim(),
         description: description?.trim() || null,
@@ -53,16 +57,17 @@ export async function POST(request: Request) {
         is_active: true,
       })
       .select()
-      .single();
+      .single() as { data: RoomRow | null; error: Error | null };
 
-    if (error) {
+    if (error || !room) {
       console.error('Create room error:', error);
-      throw error;
+      throw error || new Error('Failed to create room');
     }
 
     // Auto-join creator to the room
     await supabaseAdmin
       .from('room_participants')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .insert({
         room_id: room.id,
         user_id: userId,

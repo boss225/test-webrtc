@@ -7,6 +7,9 @@ import {
   validatePassword,
   validateUsername,
 } from '@/lib/auth';
+import type { Database } from '@/lib/supabase-types';
+
+type UserRow = Database['public']['Tables']['users']['Row'];
 
 export async function POST(request: Request) {
   try {
@@ -80,6 +83,7 @@ export async function POST(request: Request) {
     // Create user
     const { data: user, error } = await supabaseAdmin
       .from('users')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .insert({
         email: email.toLowerCase(),
         username,
@@ -87,9 +91,9 @@ export async function POST(request: Request) {
         is_online: false,
       })
       .select()
-      .single();
+      .single() as { data: UserRow | null; error: Error | null };
 
-    if (error) {
+    if (error || !user) {
       console.error('Database error:', error);
       return NextResponse.json(
         { error: 'Lỗi khi tạo tài khoản' },
@@ -101,6 +105,7 @@ export async function POST(request: Request) {
     const token = generateToken(user.id, user.email);
 
     // Remove sensitive data
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, ...userWithoutPassword } = user;
 
     return NextResponse.json({

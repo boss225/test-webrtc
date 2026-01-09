@@ -43,6 +43,23 @@ export type {
     role?: 'owner' | 'admin' | 'member';
   }
   
+  // Room participant with user details (from API)
+  export interface RoomParticipant {
+    id: string;
+    room_id: string;
+    user_id: string;
+    joined_at: string;
+    is_camera_on: boolean;
+    is_mic_on: boolean;
+    role: 'owner' | 'admin' | 'member';
+    users?: {
+      id: string;
+      username: string;
+      email?: string;
+      is_online: boolean;
+    };
+  }
+  
   export interface SignalData {
     type: 'offer' | 'answer' | 'ice-candidate' | 'user-joined' | 'user-left' | 'media-state-changed';
     from: string;

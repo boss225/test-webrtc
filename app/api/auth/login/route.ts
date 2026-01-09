@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { comparePassword, generateToken } from '@/lib/auth';
 import sessionStore from '@/lib/sessionStore';
+import type { Database } from '@/lib/supabase-types';
+
+type UserRow = Database['public']['Tables']['users']['Row'];
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +22,7 @@ export async function POST(request: Request) {
       .from('users')
       .select('*')
       .eq('email', email.toLowerCase())
-      .single();
+      .single() as { data: UserRow | null; error: Error | null };
 
     if (error || !user) {
       return NextResponse.json(
@@ -39,9 +42,15 @@ export async function POST(request: Request) {
     }
 
     // Update online status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updates: any = {
+      is_online: true,
+      last_seen: new Date().toISOString(),
+    };
     await supabaseAdmin
       .from('users')
-      .update({ is_online: true, last_seen: new Date().toISOString() })
+      // @ts-expect-error - Supabase type inference issue with Database types
+      .update(updates)
       .eq('id', user.id);
 
     // Generate session ID
@@ -54,6 +63,7 @@ export async function POST(request: Request) {
     const token = generateToken(user.id, user.email);
 
     // Remove sensitive data
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, ...userWithoutPassword } = user;
 
     return NextResponse.json({

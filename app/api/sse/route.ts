@@ -1,4 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import type { Database } from '@/lib/supabase-types';
+
+type RoomRow = Database['public']['Tables']['rooms']['Row'];
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
           .from('rooms')
           .select('id, name')
           .eq('id', roomId)
-          .single();
+          .single() as { data: Pick<RoomRow, 'id' | 'name'> | null; error: Error | null };
 
         if (roomError || !room) {
           console.error('[SSE] Room not found:', roomId, roomError);
@@ -125,7 +128,7 @@ export async function GET(request: Request) {
           channel.unsubscribe();
           try {
             controller.close();
-          } catch (e) {
+          } catch {
             // Already closed
           }
         });
@@ -138,7 +141,7 @@ export async function GET(request: Request) {
         try {
           controller.enqueue(new TextEncoder().encode(errorData));
           controller.close();
-        } catch (e) {
+        } catch {
           // Ignore
         }
       }

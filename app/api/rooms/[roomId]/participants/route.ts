@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import type { Database } from '@/lib/supabase-types';
+
+type ParticipantRow = Database['public']['Tables']['room_participants']['Row'];
+type RoomRow = Database['public']['Tables']['rooms']['Row'];
 
 export async function GET(
   request: Request,
@@ -132,7 +136,7 @@ export async function POST(
       .select('id, is_camera_on, is_mic_on')
       .eq('room_id', roomId)
       .eq('user_id', userId)
-      .maybeSingle();
+      .maybeSingle() as { data: Pick<ParticipantRow, 'id' | 'is_camera_on' | 'is_mic_on'> | null; error: Error | null };
 
     if (checkError) {
       console.error('[POST Participants] Check error:', checkError);
@@ -148,6 +152,7 @@ export async function POST(
       // Update existing participant
       const { data: participant, error: updateError } = await supabaseAdmin
         .from('room_participants')
+        // @ts-expect-error - Supabase type inference issue with Database types
         .update({
           is_camera_on: isCameraOn ?? existing.is_camera_on ?? false,
           is_mic_on: isMicOn ?? existing.is_mic_on ?? true
@@ -186,7 +191,8 @@ export async function POST(
         .select('*', { count: 'exact', head: true })
         .eq('room_id', roomId);
 
-      if (count && count >= roomExists.max_participants) {
+      const maxParticipants = (roomExists as RoomRow)?.max_participants ?? 0;
+      if (count && count >= maxParticipants) {
         console.error('[POST Participants] Room is full');
         return NextResponse.json(
           { error: 'Phòng đã đầy' },
@@ -198,13 +204,14 @@ export async function POST(
         .from('rooms')
         .select('created_by')
         .eq('id', roomId)
-        .single();
+        .single() as { data: Pick<RoomRow, 'created_by'> | null; error: Error | null };
 
       const role = room?.created_by === userId ? 'owner' : 'member';
 
       // Add new participant
       const { data: participant, error: insertError } = await supabaseAdmin
         .from('room_participants')
+        // @ts-expect-error - Supabase type inference issue with Database types
         .insert({
           room_id: roomId,
           user_id: userId,

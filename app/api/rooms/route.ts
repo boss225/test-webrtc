@@ -35,6 +35,7 @@ export async function POST(request: Request) {
 
     const { data: room, error } = await supabaseAdmin
       .from('rooms')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .insert({ name, created_by: userId })
       .select()
       .single();

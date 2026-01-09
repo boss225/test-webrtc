@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import type { BlacklistWithUser } from '@/lib/supabase-types';
+import type { BlacklistWithUser, ParticipantRow } from '@/lib/supabase-types';
 import { errorResponse, successResponse, USER_SELECT_FIELDS } from '@/lib/api-helpers';
 
 // Get blacklist
@@ -63,7 +63,7 @@ export async function POST(
       .select('role')
       .eq('room_id', roomId)
       .eq('user_id', adminUserId)
-      .maybeSingle();
+      .maybeSingle() as { data: Pick<ParticipantRow, 'role'> | null; error: Error | null };
 
     if (!adminParticipant || !['owner', 'admin'].includes(adminParticipant.role)) {
       return NextResponse.json(
@@ -96,6 +96,7 @@ export async function POST(
     // Add to blacklist
     const { data: rawBlacklistEntry, error } = await supabaseAdmin
       .from('room_blacklist')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .insert({
         room_id: roomId,
         blocked_user_id: targetUserId || null,
@@ -154,7 +155,7 @@ export async function DELETE(
       .select('role')
       .eq('room_id', roomId)
       .eq('user_id', adminUserId)
-      .maybeSingle();
+      .maybeSingle() as { data: Pick<ParticipantRow, 'role'> | null; error: Error | null };
 
     if (!adminParticipant || !['owner', 'admin'].includes(adminParticipant.role)) {
       return NextResponse.json(

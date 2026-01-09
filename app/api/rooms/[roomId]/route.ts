@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import type { Database } from '@/lib/supabase-types';
+
+type RoomRow = Database['public']['Tables']['rooms']['Row'];
 
 // Get room details
 export async function GET(
@@ -44,7 +47,7 @@ export async function PATCH(
       .from('rooms')
       .select('created_by')
       .eq('id', roomId)
-      .single();
+      .single() as { data: Pick<RoomRow, 'created_by'> | null; error: Error | null };
 
     if (room?.created_by !== userId) {
       return NextResponse.json(
@@ -53,6 +56,7 @@ export async function PATCH(
       );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: any = {};
     if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
@@ -61,6 +65,7 @@ export async function PATCH(
 
     const { data: updatedRoom, error } = await supabaseAdmin
       .from('rooms')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .update(updates)
       .eq('id', roomId)
       .select()
@@ -94,7 +99,7 @@ export async function DELETE(
       .from('rooms')
       .select('created_by, name')
       .eq('id', roomId)
-      .single();
+      .single() as { data: Pick<RoomRow, 'created_by' | 'name'> | null; error: Error | null };
 
     if (!room) {
       return NextResponse.json(

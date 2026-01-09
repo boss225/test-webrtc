@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import type { Database, MessageRow } from '@/lib/supabase-types';
+
+type UserRow = Database['public']['Tables']['users']['Row'];
+type RoomRow = Database['public']['Tables']['rooms']['Row'];
 
 export async function POST(request: Request) {
   try {
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
       .from('rooms')
       .select('id, name')
       .eq('id', roomId)
-      .maybeSingle();
+      .maybeSingle() as { data: Pick<RoomRow, 'id' | 'name'> | null; error: Error | null };
 
     if (roomError || !room) {
       console.error('[Send Message] Room not found:', roomId, roomError);
@@ -63,7 +67,7 @@ export async function POST(request: Request) {
         .from('users')
         .select('id')
         .eq('username', username)
-        .maybeSingle();
+        .maybeSingle() as { data: Pick<UserRow, 'id'> | null; error: Error | null };
 
       if (userError) {
         console.error('[Send Message] User lookup error:', userError);
@@ -86,6 +90,7 @@ export async function POST(request: Request) {
 
     const { data: message, error } = await supabaseAdmin
       .from('messages')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .insert({
         room_id: roomId, // ← IMPORTANT: Must include room_id
         user_id: finalUserId,
@@ -93,14 +98,14 @@ export async function POST(request: Request) {
         text: text.trim(),
       })
       .select()
-      .single();
+      .single() as { data: MessageRow | null; error: Error | null };
 
-    if (error) {
+    if (error || !message) {
       console.error('[Send Message] Database error:', error);
       return NextResponse.json(
         { 
           error: 'Lỗi khi lưu tin nhắn', 
-          details: error.message 
+          details: error?.message || 'Failed to create message'
         },
         { status: 500 }
       );

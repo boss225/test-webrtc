@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import type { ParticipantWithUser } from '@/lib/supabase-types';
+import type { ParticipantWithUser, ParticipantRow } from '@/lib/supabase-types';
 import { errorResponse, successResponse, extractUsername, USER_SELECT_FIELDS } from '@/lib/api-helpers';
 
 export async function POST(
@@ -9,6 +9,7 @@ export async function POST(
 ) {
   try {
     const { roomId } = await params;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { adminUserId, targetUserId, reason } = await request.json();
 
     console.log('[Kick User] Request:', { roomId, adminUserId, targetUserId });
@@ -27,7 +28,7 @@ export async function POST(
       .select('role')
       .eq('room_id', roomId)
       .eq('user_id', adminUserId)
-      .maybeSingle();
+      .maybeSingle() as { data: Pick<ParticipantRow, 'role'> | null; error: Error | null };
 
     if (!adminParticipant || !['owner', 'admin'].includes(adminParticipant.role)) {
       return NextResponse.json(

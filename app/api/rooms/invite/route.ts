@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { randomBytes } from 'crypto';
+import type { Database } from '@/lib/supabase-types';
+
+type RoomRow = Database['public']['Tables']['rooms']['Row'];
+type UserRow = Database['public']['Tables']['users']['Row'];
+type InvitationRow = Database['public']['Tables']['room_invitations']['Row'];
 
 // Helper to send email (you'll need to implement actual email sending)
 async function sendInvitationEmail(
@@ -52,7 +57,7 @@ export async function POST(request: Request) {
       .from('rooms')
       .select('*, users:created_by(username)')
       .eq('id', roomId)
-      .single();
+      .single() as { data: (RoomRow & { users?: { username: string } }) | null; error: Error | null };
 
     if (roomError || !room) {
       return NextResponse.json(
@@ -66,7 +71,7 @@ export async function POST(request: Request) {
       .from('users')
       .select('username, email')
       .eq('id', userId)
-      .single();
+      .single() as { data: Pick<UserRow, 'username' | 'email'> | null; error: Error | null };
 
     // Check if email already has pending invitation
     const { data: existingInvite } = await supabaseAdmin
@@ -89,7 +94,7 @@ export async function POST(request: Request) {
       .from('users')
       .select('id')
       .eq('email', invitedEmail.toLowerCase())
-      .maybeSingle();
+      .maybeSingle() as { data: Pick<UserRow, 'id'> | null; error: Error | null };
 
     if (existingUser) {
       const { data: participant } = await supabaseAdmin
@@ -113,6 +118,7 @@ export async function POST(request: Request) {
     // Create invitation
     const { data: invitation, error: inviteError } = await supabaseAdmin
       .from('room_invitations')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .insert({
         room_id: roomId,
         invited_by: userId,
@@ -122,7 +128,7 @@ export async function POST(request: Request) {
         status: 'pending',
       })
       .select()
-      .single();
+      .single() as { data: InvitationRow | null; error: Error | null };
 
     if (inviteError) {
       console.error('Create invitation error:', inviteError);

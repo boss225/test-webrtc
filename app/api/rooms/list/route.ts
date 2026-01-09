@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import type { Database } from '@/lib/supabase-types';
+
+type RoomRow = Database['public']['Tables']['rooms']['Row'];
+type RoomWithRelations = RoomRow & {
+  creator?: { id: string; username: string; email: string; avatar_url: string | null };
+  participants?: Array<unknown>;
+};
 
 export async function GET(request: Request) {
   try {
@@ -24,14 +31,14 @@ export async function GET(request: Request) {
       query = query.eq('is_private', false);
     }
 
-    const { data: rooms, error } = await query;
+    const { data: rooms, error } = await query as { data: RoomWithRelations[] | null; error: Error | null };
 
     if (error) throw error;
 
     // Add participants count
-    const roomsWithCount = rooms?.map(room => ({
+    const roomsWithCount = rooms?.map((room: RoomWithRelations) => ({
       ...room,
-      participants_count: room.participants?.length || 0,
+      participants_count: Array.isArray(room.participants) ? room.participants.length : 0,
     }));
 
     return NextResponse.json(roomsWithCount || []);

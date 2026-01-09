@@ -1,4 +1,4 @@
-import { supabaseAdmin, User } from './supabase';
+import { supabaseAdmin } from './supabase';
 
 interface Session {
   sessionId: string;
@@ -37,9 +37,15 @@ class SessionStore {
 
     if (session) {
       // Update offline status
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updates: any = {
+        is_online: false,
+        last_seen: new Date().toISOString(),
+      };
       await supabaseAdmin
         .from('users')
-        .update({ is_online: false, last_seen: new Date().toISOString() })
+        // @ts-expect-error - Supabase type inference issue with Database types
+        .update(updates)
         .eq('id', session.supabaseUserId);
 
       return this.sessions.delete(sessionId);

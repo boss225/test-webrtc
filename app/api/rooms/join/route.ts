@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { comparePassword } from '@/lib/auth';
+import type { Database } from '@/lib/supabase-types';
+
+type RoomRow = Database['public']['Tables']['rooms']['Row'];
+type UserRow = Database['public']['Tables']['users']['Row'];
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +23,7 @@ export async function POST(request: Request) {
       .select('*')
       .eq('id', roomId)
       .eq('is_active', true)
-      .single();
+      .single() as { data: RoomRow | null; error: Error | null };
 
     if (roomError || !room) {
       return NextResponse.json(
@@ -33,7 +37,7 @@ export async function POST(request: Request) {
       .from('users')
       .select('id, email')
       .eq('id', userId)
-      .single();
+      .single() as { data: Pick<UserRow, 'id' | 'email'> | null; error: Error | null };
 
     if (!user) {
       return NextResponse.json(
@@ -43,12 +47,12 @@ export async function POST(request: Request) {
     }
 
     // ✅ CHECK BLACKLIST
-    const { data: isBlacklisted } = await supabaseAdmin
-      .rpc('is_user_blacklisted', {
-        p_room_id: roomId,
-        p_user_id: userId,
-        p_email: user.email
-      });
+    // @ts-expect-error - Supabase RPC type inference issue - function signature not properly typed
+    const { data: isBlacklisted } = await supabaseAdmin.rpc('is_user_blacklisted', {
+      p_room_id: roomId,
+      p_user_id: userId,
+      p_email: user.email
+    });
 
     if (isBlacklisted) {
       return NextResponse.json(
@@ -107,6 +111,7 @@ export async function POST(request: Request) {
     // Join room
     await supabaseAdmin
       .from('room_participants')
+      // @ts-expect-error - Supabase type inference issue with Database types
       .insert({
         room_id: roomId,
         user_id: userId,

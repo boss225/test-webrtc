@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@/lib/supabase';
+import { User } from '@/types';
 
 interface AuthContextType {
   isAuthenticated: boolean;

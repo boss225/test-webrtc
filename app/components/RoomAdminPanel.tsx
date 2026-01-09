@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Room, RoomParticipant, RoomBlacklist } from '@/types';
 
 interface RoomAdminPanelProps {
@@ -25,12 +25,7 @@ export default function RoomAdminPanel({
 
   const isOwner = room.created_by === currentUserId;
 
-  useEffect(() => {
-    loadParticipants();
-    loadBlacklist();
-  }, []);
-
-  const loadParticipants = async () => {
+  const loadParticipants = useCallback(async () => {
     try {
       const response = await fetch(`/api/rooms/${room.id}/participants`);
       const data = await response.json();
@@ -38,9 +33,9 @@ export default function RoomAdminPanel({
     } catch (error) {
       console.error('Error loading participants:', error);
     }
-  };
+  }, [room.id]);
 
-  const loadBlacklist = async () => {
+  const loadBlacklist = useCallback(async () => {
     try {
       const response = await fetch(`/api/rooms/${room.id}/blacklist`);
       const data = await response.json();
@@ -48,7 +43,12 @@ export default function RoomAdminPanel({
     } catch (error) {
       console.error('Error loading blacklist:', error);
     }
-  };
+  }, [room.id]);
+
+  useEffect(() => {
+    loadParticipants();
+    loadBlacklist();
+  }, [loadParticipants, loadBlacklist]);
 
   const handleKickUser = async (targetUserId: string) => {
     const participant = participants.find(p => p.user_id === targetUserId);
