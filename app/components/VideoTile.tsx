@@ -23,27 +23,13 @@ export default function VideoTile({ participant, stream, isLocal }: VideoTilePro
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
-      // Ensure video plays
-      videoRef.current.play().catch(err => {
-        console.warn('Error playing video:', err);
+      videoRef.current.play().catch(() => {
+        // Silent fail
       });
     } else if (videoRef.current && !stream) {
       videoRef.current.srcObject = null;
     }
   }, [stream]);
-
-  useEffect(() => {
-    // Log video track state for debugging
-    if (stream) {
-      const videoTracks = stream.getVideoTracks();
-      console.log(`VideoTile ${participant.username}:`, {
-        hasVideoTrack: videoTracks.length > 0,
-        videoTrackEnabled: videoTracks.some(t => t.enabled && t.readyState === 'live'),
-        participantIsCameraOn: participant.isCameraOn,
-        tracks: videoTracks.map(t => ({ enabled: t.enabled, readyState: t.readyState }))
-      });
-    }
-  }, [stream, participant.isCameraOn, participant.username]);
 
   return (
     <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">

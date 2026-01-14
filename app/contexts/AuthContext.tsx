@@ -54,14 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Clear invalid session
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            localStorage.removeItem('sessionId');
-          }
-        } catch (error) {
-          console.error('Verify session error:', error);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
           localStorage.removeItem('sessionId');
         }
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('sessionId');
+      }
       }
 
       setIsLoading(false);
@@ -90,8 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Auto login after register
       return await login(email, password);
-    } catch (error) {
-      console.error('Register error:', error);
+    } catch {
       return { success: false, error: 'Lỗi kết nối. Vui lòng thử lại.' };
     }
   };
@@ -125,8 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('sessionId', data.sessionId);
 
       return { success: true };
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch {
       return { success: false, error: 'Lỗi kết nối. Vui lòng thử lại.' };
     }
   };
@@ -139,8 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId }),
         });
-      } catch (error) {
-        console.error('Logout error:', error);
+      } catch {
+        // Silent fail
       }
     }
 

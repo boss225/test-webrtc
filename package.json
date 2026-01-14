@@ -10,7 +10,13 @@
     "lint": "next lint",
     "generate:types": "tsx scripts/generate-types.ts"
   },
-  "keywords": ["video", "chat", "webrtc", "conference", "streaming"],
+  "keywords": [
+    "video",
+    "chat",
+    "webrtc",
+    "conference",
+    "streaming"
+  ],
   "author": "VibeRoom Team",
   "license": "MIT",
   "dependencies": {
@@ -19,7 +25,8 @@
     "jsonwebtoken": "^9.0.3",
     "next": "16.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -31,7 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "tsx": "^4.19.3"
+    "tsx": "^4.19.3",
+    "typescript": "^5"
   }
 }

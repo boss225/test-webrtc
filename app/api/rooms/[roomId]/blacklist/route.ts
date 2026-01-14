@@ -42,13 +42,6 @@ export async function POST(
     const { roomId } = await params;
     const { adminUserId, targetUserId, targetEmail, reason } = await request.json();
 
-    console.log('[Add Blacklist] Request:', { 
-      roomId, 
-      adminUserId, 
-      targetUserId, 
-      targetEmail 
-    });
-
     // Validate
     if (!targetUserId && !targetEmail) {
       return NextResponse.json(
@@ -124,13 +117,10 @@ export async function POST(
         .eq('user_id', targetUserId);
     }
 
-    console.log('[Add Blacklist] Success:', blacklistEntry.id);
-
     return NextResponse.json(
       successResponse(blacklistEntry, 'Đã chặn user thành công')
     );
   } catch (error) {
-    console.error('Add blacklist error:', error);
     return NextResponse.json(
       errorResponse('Lỗi khi thêm vào blacklist'),
       { status: 500 }
@@ -146,8 +136,6 @@ export async function DELETE(
   try {
     const { roomId } = await params;
     const { adminUserId, blacklistId } = await request.json();
-
-    console.log('[Remove Blacklist] Request:', { roomId, adminUserId, blacklistId });
 
     // Check admin permission
     const { data: adminParticipant } = await supabaseAdmin
@@ -173,13 +161,10 @@ export async function DELETE(
 
     if (error) throw error;
 
-    console.log('[Remove Blacklist] Success:', blacklistId);
-
     return NextResponse.json(
       successResponse({ blacklistId }, 'Đã bỏ chặn thành công')
     );
   } catch (error) {
-    console.error('Remove blacklist error:', error);
     return NextResponse.json(
       errorResponse('Lỗi khi bỏ chặn'),
       { status: 500 }

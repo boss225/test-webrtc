@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Room } from '@/types';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from './AppHeader';
@@ -9,7 +10,8 @@ import JoinRoomModal from './JoinRoomModal';
 import InviteModal from './InviteModal';
 import { BRAND_CONFIG } from '../config/brand';
 
-export default function RoomList({ onRoomSelect }: { onRoomSelect: (room: Room) => void }) {
+export default function RoomList() {
+  const router = useRouter();
   const { supabaseUserId, username } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,8 +27,8 @@ export default function RoomList({ onRoomSelect }: { onRoomSelect: (room: Room) 
       const response = await fetch(`/api/rooms/list?userId=${supabaseUserId}&showAll=true`);
       const data = await response.json();
       setRooms(data);
-    } catch (error) {
-      console.error('Error loading rooms:', error);
+    } catch {
+      // Silent fail
     } finally {
       setLoading(false);
     }
@@ -36,9 +38,11 @@ export default function RoomList({ onRoomSelect }: { onRoomSelect: (room: Room) 
     loadRooms();
   }, [supabaseUserId]);
 
-  const handleCreateRoom = () => {
+  const handleCreateRoom = (roomId: string) => {
     setShowCreateModal(false);
     loadRooms();
+    // Navigate to the newly created room
+    router.push(`/room/${roomId}`);
   };
 
   const handleJoinRoom = (room: Room) => {
@@ -71,9 +75,9 @@ export default function RoomList({ onRoomSelect }: { onRoomSelect: (room: Room) 
       }
 
       setShowJoinModal(false);
-      onRoomSelect(data.room);
-    } catch (error) {
-      console.error('Error joining room:', error);
+      // Navigate to room page
+      router.push(`/room/${roomId}`);
+    } catch {
       alert('Lỗi khi tham gia phòng');
     }
   };

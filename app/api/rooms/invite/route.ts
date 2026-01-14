@@ -20,15 +20,8 @@ async function sendInvitationEmail(
   // - Resend
   // - Nodemailer
   
-  const invitationLink = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invitationToken}`;
-  
-  console.log('=== EMAIL INVITATION ===');
-  console.log('To:', email);
-  console.log('Subject: Lời mời tham gia phòng chat', roomName);
-  console.log('Link:', invitationLink);
-  console.log('========================');
-
-  // For now, just log. You should implement actual email sending here
+  // TODO: Implement actual email sending here
+  // For now, just return success
   return true;
 }
 
@@ -131,7 +124,6 @@ export async function POST(request: Request) {
       .single() as { data: InvitationRow | null; error: Error | null };
 
     if (inviteError) {
-      console.error('Create invitation error:', inviteError);
       throw inviteError;
     }
 
@@ -149,7 +141,6 @@ export async function POST(request: Request) {
       message: 'Lời mời đã được gửi qua email',
     });
   } catch (error) {
-    console.error('Invite error:', error);
     return NextResponse.json(
       { error: 'Lỗi khi gửi lời mời' },
       { status: 500 }

@@ -8,22 +8,14 @@ interface MessageInputProps {
   disabled?: boolean;
 }
 
-export default function MessageInput({ 
-  username, 
-  onSendMessage, 
-  disabled 
+export default function MessageInput({
+  username,
+  onSendMessage,
+  disabled
 }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
-    }
-  }, [message]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +23,7 @@ export default function MessageInput({
       onSendMessage(message.trim());
       setMessage('');
       setIsTyping(false);
-      
+
       // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
@@ -52,8 +44,8 @@ export default function MessageInput({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-white border-t border-gray-200">
-      <div className="flex items-end gap-2">
+    <form onSubmit={handleSubmit} className="px-3 py-2 bg-white border-t border-gray-200">
+      <div className="flex items-end gap-2 align-center">
 
         {/* Textarea */}
         <div className="flex-1 relative">
@@ -65,10 +57,9 @@ export default function MessageInput({
             placeholder="Enter to send"
             disabled={disabled}
             rows={1}
-            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-100 resize-none transition-all"
-            style={{ maxHeight: '120px' }}
+            className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-100 resize-none transition-all"
           />
-          
+
           {/* Character count */}
           {message.length > 0 && (
             <div className="absolute bottom-2 right-3 text-xs text-gray-400">
@@ -81,11 +72,10 @@ export default function MessageInput({
         <button
           type="submit"
           disabled={disabled || !message.trim()}
-          className={`flex-shrink-0 p-3 rounded-full transition-all shadow-md ${
-            message.trim() && !disabled
+          className={`flex-shrink-0 p-3 rounded-full transition-all shadow-md ${message.trim() && !disabled
               ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:shadow-lg hover:scale-105 active:scale-95'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}
+            }`}
           title="Gửi tin nhắn"
         >
           <svg

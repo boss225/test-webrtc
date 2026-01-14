@@ -1,6 +1,7 @@
 'use client';
 
 import { BRAND_CONFIG } from '../config/brand';
+import { useRouter } from 'next/navigation';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -17,6 +18,7 @@ export default function Logo({
   variant = 'default',
   className = ''
 }: LogoProps) {
+  const router = useRouter();
   const sizes = {
     sm: {
       icon: 'w-10 h-10',
@@ -46,8 +48,13 @@ export default function Logo({
     gradient: 'font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent',
   };
 
+  const handleBack = () => {
+    localStorage.removeItem('currentRoomId');
+    router.push('/');
+  };
+
   return (
-    <div className={`flex items-center ${sizes[size].container} ${className}`}>
+    <div className={`flex items-center ${sizes[size].container} ${className}`} onClick={handleBack}>
       {showIcon && (
         <div className={`${sizes[size].icon} relative flex items-center`}>
           <img

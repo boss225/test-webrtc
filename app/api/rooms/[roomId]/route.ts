@@ -92,8 +92,6 @@ export async function DELETE(
     const { roomId } = await params;
     const { userId } = await request.json();
 
-    console.log('[Delete Room] Request:', { roomId, userId });
-
     // Check if user is room owner
     const { data: room } = await supabaseAdmin
       .from('rooms')
@@ -122,8 +120,6 @@ export async function DELETE(
       .eq('id', roomId);
 
     if (error) throw error;
-
-    console.log('[Delete Room] Success:', roomId);
 
     return NextResponse.json({ 
       success: true,

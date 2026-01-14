@@ -19,6 +19,23 @@ export const supabaseAdmin = createClient<Database>(
   }
 );
 
+// Realtime client (uses anon key for realtime subscriptions)
+export const supabaseRealtime = createClient<Database>(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+  }
+);
+
 // Type exports
 export type { Database } from './supabase-types';
 export type {

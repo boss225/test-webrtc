@@ -5,7 +5,7 @@ import { useState } from 'react';
 interface CreateRoomModalProps {
   userId: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (roomId: string) => void;
 }
 
 export default function CreateRoomModal({ userId, onClose, onSuccess }: CreateRoomModalProps) {
@@ -47,8 +47,8 @@ export default function CreateRoomModal({ userId, onClose, onSuccess }: CreateRo
         return;
       }
 
-      onSuccess();
-    } catch (err) {
+      onSuccess(data.room.id);
+    } catch {
       setError('Lỗi kết nối. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);

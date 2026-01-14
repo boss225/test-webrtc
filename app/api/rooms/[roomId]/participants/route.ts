@@ -11,7 +11,6 @@ export async function GET(
 ) {
   try {
     const { roomId } = await params;
-    console.log('[GET Participants] Room ID:', roomId);
 
     const { data: participants, error } = await supabaseAdmin
       .from('room_participants')
@@ -26,14 +25,11 @@ export async function GET(
       .eq('room_id', roomId);
 
     if (error) {
-      console.error('[GET Participants] Database error:', error);
       throw error;
     }
 
-    console.log('[GET Participants] Success:', participants?.length || 0, 'participants');
     return NextResponse.json(participants || []);
   } catch (error) {
-    console.error('[GET Participants] Error:', error);
     return NextResponse.json(
       {
         error: 'Lỗi khi lấy danh sách thành viên',
@@ -53,16 +49,8 @@ export async function POST(
     const body = await request.json();
     const { userId, isCameraOn, isMicOn } = body;
 
-    console.log('[POST Participants] Request:', {
-      roomId,
-      userId,
-      isCameraOn,
-      isMicOn
-    });
-
     // Validate inputs
     if (!userId) {
-      console.error('[POST Participants] Missing userId');
       return NextResponse.json(
         { error: 'userId là bắt buộc' },
         { status: 400 }
@@ -70,7 +58,6 @@ export async function POST(
     }
 
     if (!roomId) {
-      console.error('[POST Participants] Missing roomId');
       return NextResponse.json(
         { error: 'roomId không hợp lệ' },
         { status: 400 }
@@ -78,7 +65,6 @@ export async function POST(
     }
 
     // Verify user exists
-    console.log('[POST Participants] Verifying user exists:', userId);
     const { data: userExists, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, username')
@@ -86,7 +72,6 @@ export async function POST(
       .maybeSingle();
 
     if (userError) {
-      console.error('[POST Participants] User query error:', userError);
       return NextResponse.json(
         { error: 'Lỗi khi kiểm tra user', details: userError.message },
         { status: 500 }
@@ -94,17 +79,13 @@ export async function POST(
     }
 
     if (!userExists) {
-      console.error('[POST Participants] User not found:', userId);
       return NextResponse.json(
         { error: 'User không tồn tại', userId },
         { status: 404 }
       );
     }
 
-    console.log('[POST Participants] User found:', userExists);
-
     // Verify room exists
-    console.log('[POST Participants] Verifying room exists:', roomId);
     const { data: roomExists, error: roomError } = await supabaseAdmin
       .from('rooms')
       .select('id, name, max_participants')
@@ -112,7 +93,6 @@ export async function POST(
       .maybeSingle();
 
     if (roomError) {
-      console.error('[POST Participants] Room query error:', roomError);
       return NextResponse.json(
         { error: 'Lỗi khi kiểm tra room', details: roomError.message },
         { status: 500 }
@@ -120,17 +100,13 @@ export async function POST(
     }
 
     if (!roomExists) {
-      console.error('[POST Participants] Room not found:', roomId);
       return NextResponse.json(
         { error: 'Room không tồn tại', roomId },
         { status: 404 }
       );
     }
 
-    console.log('[POST Participants] Room found:', roomExists);
-
     // Check if participant already exists
-    console.log('[POST Participants] Checking existing participant');
     const { data: existing, error: checkError } = await supabaseAdmin
       .from('room_participants')
       .select('id, is_camera_on, is_mic_on')
@@ -139,7 +115,6 @@ export async function POST(
       .maybeSingle() as { data: Pick<ParticipantRow, 'id' | 'is_camera_on' | 'is_mic_on'> | null; error: Error | null };
 
     if (checkError) {
-      console.error('[POST Participants] Check error:', checkError);
       return NextResponse.json(
         { error: 'Lỗi khi kiểm tra participant', details: checkError.message },
         { status: 500 }
@@ -147,7 +122,6 @@ export async function POST(
     }
 
     if (existing) {
-      console.log('[POST Participants] Participant exists, updating:', existing.id);
 
       // Update existing participant
       const { data: participant, error: updateError } = await supabaseAdmin
@@ -169,21 +143,18 @@ export async function POST(
         .single();
 
       if (updateError) {
-        console.error('[POST Participants] Update error:', updateError);
         return NextResponse.json(
           { error: 'Lỗi khi cập nhật participant', details: updateError.message },
           { status: 500 }
         );
       }
 
-      console.log('[POST Participants] Updated successfully:', participant);
       return NextResponse.json({
         success: true,
         participant,
         message: 'Đã cập nhật thông tin'
       });
     } else {
-      console.log('[POST Participants] Creating new participant');
 
       // Check if room is full
       const { count } = await supabaseAdmin
@@ -193,7 +164,6 @@ export async function POST(
 
       const maxParticipants = (roomExists as RoomRow)?.max_participants ?? 0;
       if (count && count >= maxParticipants) {
-        console.error('[POST Participants] Room is full');
         return NextResponse.json(
           { error: 'Phòng đã đầy' },
           { status: 403 }
@@ -230,14 +200,12 @@ export async function POST(
         .single();
 
       if (insertError) {
-        console.error('[POST Participants] Insert error:', insertError);
         return NextResponse.json(
           { error: 'Lỗi khi tạo participant', details: insertError.message },
           { status: 500 }
         );
       }
 
-      console.log('[POST Participants] Created successfully:', participant);
       return NextResponse.json({
         success: true,
         participant,
@@ -245,7 +213,6 @@ export async function POST(
       });
     }
   } catch (error) {
-    console.error('[POST Participants] Unexpected error:', error);
     return NextResponse.json(
       {
         error: 'Lỗi không mong muốn khi tham gia phòng',
@@ -265,8 +232,6 @@ export async function DELETE(
     const body = await request.json();
     const { userId } = body;
 
-    console.log('[DELETE Participants] Request:', { roomId, userId });
-
     if (!userId) {
       return NextResponse.json(
         { error: 'userId là bắt buộc' },
@@ -281,17 +246,14 @@ export async function DELETE(
       .eq('user_id', userId);
 
     if (error) {
-      console.error('[DELETE Participants] Error:', error);
       return NextResponse.json(
         { error: 'Lỗi khi rời phòng', details: error.message },
         { status: 500 }
       );
     }
 
-    console.log('[DELETE Participants] Success');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[DELETE Participants] Unexpected error:', error);
     return NextResponse.json(
       {
         error: 'Lỗi không mong muốn khi rời phòng',

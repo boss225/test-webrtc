@@ -12,8 +12,6 @@ export async function POST(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { adminUserId, targetUserId, reason } = await request.json();
 
-    console.log('[Kick User] Request:', { roomId, adminUserId, targetUserId });
-
     // Validate inputs
     if (!adminUserId || !targetUserId) {
       return NextResponse.json(
@@ -49,7 +47,6 @@ export async function POST(
       .single();
 
     if (targetError || !rawParticipant) {
-      console.error('[Kick User] Target not found:', targetError);
       return NextResponse.json(
         errorResponse('User không có trong phòng'),
         { status: 404 }
@@ -78,11 +75,8 @@ export async function POST(
       .eq('user_id', targetUserId);
 
     if (kickError) {
-      console.error('[Kick User] Delete error:', kickError);
       throw kickError;
     }
-
-    console.log('[Kick User] Success:', targetUserId);
 
     return NextResponse.json(
       successResponse(
@@ -91,7 +85,6 @@ export async function POST(
       )
     );
   } catch (error) {
-    console.error('[Kick User] Unexpected error:', error);
     return NextResponse.json(
       errorResponse(
         'Lỗi khi loại bỏ user',

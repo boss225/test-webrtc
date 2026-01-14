@@ -1,15 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './contexts/AuthContext';
 import AuthForm from './components/AuthForm';
 import RoomList from './components/RoomList';
-import ChatRoom from './components/ChatRoom';
-import { Room } from '@/types';
+
+const CURRENT_ROOM_KEY = 'currentRoomId';
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const router = useRouter();
+
+  // Redirect to saved room if exists
+  useEffect(() => {
+    if (!isAuthenticated || isLoading) {
+      return;
+    }
+
+    const savedRoomId = localStorage.getItem(CURRENT_ROOM_KEY);
+    if (savedRoomId) {
+      router.push(`/room/${savedRoomId}`);
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
     return (
@@ -26,9 +39,5 @@ export default function Home() {
     return <AuthForm />;
   }
 
-  if (selectedRoom) {
-    return <ChatRoom initialRoom={selectedRoom} onBack={() => setSelectedRoom(null)} />;
-  }
-
-  return <RoomList onRoomSelect={setSelectedRoom} />;
+  return <RoomList />;
 }

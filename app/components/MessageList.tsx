@@ -1,7 +1,8 @@
 'use client';
 
 import { Message } from '@/types';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo, memo } from 'react';
+import MessageItem from './MessageItem';
 
 interface MessageListProps {
   messages: Message[];
@@ -9,20 +10,43 @@ interface MessageListProps {
   isLoading?: boolean;
 }
 
-export default function MessageList({ messages, currentUsername, isLoading }: MessageListProps) {
+const MessageList = memo(function MessageList({ messages, currentUsername, isLoading }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef(0);
 
+  // Only scroll if new message was added
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messages.length > prevMessagesLengthRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      prevMessagesLengthRef.current = messages.length;
+    }
+  }, [messages.length]);
 
-  console.log('[MessageList] Rendering', messages.length, 'messages');
+  // Memoize message items with their display properties
+  const messageItems = useMemo(() => {
+    return messages.map((message, index) => {
+      const isOwnMessage = message.username === currentUsername;
+      const showAvatar = index === 0 || messages[index - 1].username !== message.username;
+      const isLastFromUser = index === messages.length - 1 || messages[index + 1].username !== message.username;
+      
+      return (
+        <MessageItem
+          key={message.id}
+          message={message}
+          isOwnMessage={isOwnMessage}
+          showAvatar={showAvatar}
+          isLastFromUser={isLastFromUser}
+        />
+      );
+    });
+  }, [messages, currentUsername]);
 
   return (
     <div 
       ref={containerRef}
       className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-gray-50 to-gray-100"
+      style={{ maxHeight: 'calc(100vh - 14.3rem)' }}
     >
       {isLoading ? (
         <div className="flex items-center justify-center h-full">
@@ -53,91 +77,12 @@ export default function MessageList({ messages, currentUsername, isLoading }: Me
         </div>
       ) : (
         <>
-          {messages.map((message, index) => {
-            const isOwnMessage = message.username === currentUsername;
-            const showAvatar = index === 0 || messages[index - 1].username !== message.username;
-            const isLastFromUser = index === messages.length - 1 || messages[index + 1].username !== message.username;
-            
-            return (
-              <div
-                key={message.id}
-                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} animate-slideIn`}
-              >
-                <div className={`flex items-end gap-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {/* Avatar */}
-                  {!isOwnMessage && showAvatar && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
-                      {message.username.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  
-                  {!isOwnMessage && !showAvatar && (
-                    <div className="w-8 h-8 flex-shrink-0" />
-                  )}
-
-                  {/* Message bubble */}
-                  <div className="flex flex-col">
-                    {/* Username (chỉ hiện khi đầu tiên của user) */}
-                    {!isOwnMessage && showAvatar && (
-                      <span className="text-xs font-semibold text-gray-600 mb-1 ml-3">
-                        {message.username}
-                      </span>
-                    )}
-
-                    {/* Bubble */}
-                    <div
-                      className={`relative px-4 py-2 shadow-sm ${
-                        isOwnMessage
-                          ? `bg-gradient-to-br from-blue-500 to-blue-600 text-white ${
-                              isLastFromUser ? 'rounded-br-sm' : 'rounded-br-lg'
-                            } rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl`
-                          : `bg-white text-gray-800 border border-gray-200 ${
-                              isLastFromUser ? 'rounded-bl-sm' : 'rounded-bl-lg'
-                            } rounded-tl-2xl rounded-tr-2xl rounded-br-2xl`
-                      }`}
-                    >
-                      {/* Message text */}
-                      <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-                        {message.text}
-                      </p>
-
-                      {/* Timestamp */}
-                      <div className={`flex items-center gap-1 mt-1 ${
-                        isOwnMessage ? 'justify-end' : 'justify-start'
-                      }`}>
-                        <span className={`text-xs ${
-                          isOwnMessage ? 'text-blue-100' : 'text-gray-500'
-                        }`}>
-                          {new Date(message.created_at).toLocaleTimeString('vi-VN', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                        
-                        {/* Check mark cho tin nhắn của mình */}
-                        {isOwnMessage && (
-                          <svg
-                            className="w-4 h-4 text-blue-100"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {messageItems}
           <div ref={messagesEndRef} />
         </>
       )}
     </div>
   );
-}
+});
+
+export default MessageList;

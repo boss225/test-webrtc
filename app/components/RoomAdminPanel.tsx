@@ -30,18 +30,20 @@ export default function RoomAdminPanel({
       const response = await fetch(`/api/rooms/${room.id}/participants`);
       const data = await response.json();
       setParticipants(data);
-    } catch (error) {
-      console.error('Error loading participants:', error);
+    } catch {
+      // Silent fail
     }
   }, [room.id]);
 
   const loadBlacklist = useCallback(async () => {
     try {
       const response = await fetch(`/api/rooms/${room.id}/blacklist`);
-      const data = await response.json();
-      setBlacklist(data);
-    } catch (error) {
-      console.error('Error loading blacklist:', error);
+      const result = await response.json();
+      // Extract data from API response format { success: true, data: [...] }
+      const blacklistData = result.data || (Array.isArray(result) ? result : []);
+      setBlacklist(blacklistData);
+    } catch {
+      setBlacklist([]);
     }
   }, [room.id]);
 
@@ -77,8 +79,7 @@ export default function RoomAdminPanel({
 
       alert(data.message);
       loadParticipants();
-    } catch (error) {
-      console.error('Kick user error:', error);
+    } catch {
       alert('Lỗi khi loại bỏ user');
     } finally {
       setLoading(false);
@@ -111,8 +112,7 @@ export default function RoomAdminPanel({
       setBlacklistReason('');
       loadBlacklist();
       loadParticipants();
-    } catch (error) {
-      console.error('Add blacklist error:', error);
+    } catch {
       alert('Lỗi khi chặn user');
     } finally {
       setLoading(false);
@@ -144,8 +144,7 @@ export default function RoomAdminPanel({
 
       alert(data.message);
       loadBlacklist();
-    } catch (error) {
-      console.error('Remove blacklist error:', error);
+    } catch {
       alert('Lỗi khi bỏ chặn');
     } finally {
       setLoading(false);
@@ -178,8 +177,7 @@ export default function RoomAdminPanel({
 
       alert(data.message);
       onRoomDeleted?.();
-    } catch (error) {
-      console.error('Delete room error:', error);
+    } catch {
       alert('Lỗi khi xóa phòng');
     } finally {
       setLoading(false);
